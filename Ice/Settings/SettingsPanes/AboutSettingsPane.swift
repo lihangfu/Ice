@@ -8,6 +8,7 @@ import SwiftUI
 struct AboutSettingsPane: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.openURL) private var openURL
+    @Environment(\.locale) private var locale
 
     private var updatesManager: UpdatesManager {
         appState.updatesManager
@@ -34,9 +35,9 @@ struct AboutSettingsPane: View {
 
     private var lastUpdateCheckString: String {
         if let date = updatesManager.lastUpdateCheckDate {
-            date.formatted(date: .abbreviated, time: .standard)
+            date.formatted(Date.FormatStyle(date: .abbreviated, time: .standard).locale(locale))
         } else {
-            "Never"
+            AppLanguage.current.localizedString("Never")
         }
     }
 

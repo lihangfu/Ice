@@ -85,15 +85,15 @@ struct MenuBarItem {
         return switch MenuBarItemInfo.Namespace(owningApplication.bundleIdentifier) {
         case .controlCenter:
             switch title {
-            case "AccessibilityShortcuts": "Accessibility Shortcuts"
+            case "AccessibilityShortcuts": AppLanguage.current.localizedString("Accessibility Shortcuts")
             case "BentoBox": bestName // Control Center
-            case "FocusModes": "Focus"
-            case "KeyboardBrightness": "Keyboard Brightness"
-            case "MusicRecognition": "Music Recognition"
-            case "NowPlaying": "Now Playing"
-            case "ScreenMirroring": "Screen Mirroring"
-            case "StageManager": "Stage Manager"
-            case "UserSwitcher": "Fast User Switching"
+            case "FocusModes": AppLanguage.current.localizedString("Focus")
+            case "KeyboardBrightness": AppLanguage.current.localizedString("Keyboard Brightness")
+            case "MusicRecognition": AppLanguage.current.localizedString("Music Recognition")
+            case "NowPlaying": AppLanguage.current.localizedString("Now Playing")
+            case "ScreenMirroring": AppLanguage.current.localizedString("Screen Mirroring")
+            case "StageManager": AppLanguage.current.localizedString("Stage Manager")
+            case "UserSwitcher": AppLanguage.current.localizedString("Fast User Switching")
             case "WiFi": "Wi-Fi"
             default: title
             }
@@ -102,7 +102,7 @@ struct MenuBarItem {
             case "TimeMachine.TMMenuExtraHost"/*Sonoma*/, "TimeMachineMenuExtra.TMMenuExtraHost"/*Sequoia*/: "Time Machine"
             default: title
             }
-        case MenuBarItemInfo.Namespace("com.apple.Passwords.MenuBarExtra"): "Passwords"
+        case MenuBarItemInfo.Namespace("com.apple.Passwords.MenuBarExtra"): AppLanguage.current.localizedString("Passwords")
         default:
             bestName
         }

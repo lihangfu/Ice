@@ -118,6 +118,7 @@
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
 			);
 			mainGroup = 716683212A767E6A006ABF84;
 			packageReferences = (
@@ -324,7 +325,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.11.15;
+				MARKETING_VERSION = 0.11.16;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jordanbaird.Ice;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -356,7 +357,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.11.15;
+				MARKETING_VERSION = 0.11.16;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jordanbaird.Ice;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

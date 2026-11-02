@@ -205,6 +205,7 @@ private final class IceBarHostingView: NSHostingView<AnyView> {
     ) {
         super.init(
             rootView: IceBarContentView(screen: screen, section: section, closePanel: closePanel)
+                .modifier(AppLanguageModifier(manager: appState.settingsManager.generalSettingsManager))
                 .environmentObject(appState)
                 .environmentObject(appState.imageCache)
                 .environmentObject(appState.itemManager)

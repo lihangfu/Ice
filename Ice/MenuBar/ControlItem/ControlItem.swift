@@ -425,7 +425,7 @@ final class ControlItem {
         let menu = NSMenu(title: "Ice")
 
         let settingsItem = NSMenuItem(
-            title: "Ice Settings…",
+            title: AppLanguage.current.localizedString("Ice Settings…"),
             action: #selector(AppDelegate.openSettingsWindow),
             keyEquivalent: ","
         )
@@ -435,7 +435,7 @@ final class ControlItem {
         menu.addItem(.separator())
 
         let searchItem = NSMenuItem(
-            title: "Search Menu Bar Items",
+            title: AppLanguage.current.localizedString("Search Menu Bar Items"),
             action: #selector(showSearchPanel),
             keyEquivalent: ""
         )
@@ -462,7 +462,9 @@ final class ControlItem {
                 continue
             }
             let item = NSMenuItem(
-                title: "\(section.isHidden ? "Show" : "Hide") the \(name.displayString) Section",
+                title: section.isHidden
+                    ? AppLanguage.current.localizedString("Show the \(name.displayString) Section")
+                    : AppLanguage.current.localizedString("Hide the \(name.displayString) Section"),
                 action: #selector(toggleMenuBarSection),
                 keyEquivalent: ""
             )
@@ -494,7 +496,7 @@ final class ControlItem {
         menu.addItem(.separator())
 
         let checkForUpdatesItem = NSMenuItem(
-            title: "Check for Updates…",
+            title: AppLanguage.current.localizedString("Check for Updates…"),
             action: #selector(checkForUpdates),
             keyEquivalent: ""
         )
@@ -504,7 +506,7 @@ final class ControlItem {
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(
-            title: "Quit Ice",
+            title: AppLanguage.current.localizedString("Quit Ice"),
             action: #selector(NSApp.terminate),
             keyEquivalent: "q"
         )

@@ -8,6 +8,9 @@ import Foundation
 
 @MainActor
 final class GeneralSettingsManager: ObservableObject {
+    /// The language currently used by the interface.
+    @Published var appLanguage = AppLanguage.current
+
     /// A Boolean value that indicates whether the Ice icon
     /// should be shown.
     @Published var showIceIcon = true
@@ -81,6 +84,7 @@ final class GeneralSettingsManager: ObservableObject {
     }
 
     private func loadInitialState() {
+        appLanguage = AppLanguage.load(bundleIdentifier: Constants.bundleIdentifier)
         Defaults.ifPresent(key: .showIceIcon, assign: &showIceIcon)
         Defaults.ifPresent(key: .customIceIconIsTemplate, assign: &customIceIconIsTemplate)
         Defaults.ifPresent(key: .useIceBar, assign: &useIceBar)
@@ -116,6 +120,13 @@ final class GeneralSettingsManager: ObservableObject {
 
     private func configureCancellables() {
         var c = Set<AnyCancellable>()
+
+        $appLanguage
+            .dropFirst()
+            .sink { language in
+                language.save()
+            }
+            .store(in: &c)
 
         $showIceIcon
             .receive(on: DispatchQueue.main)

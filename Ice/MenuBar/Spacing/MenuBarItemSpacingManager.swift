@@ -28,11 +28,11 @@ final class MenuBarItemSpacingManager {
         let failedApps: [String]
 
         var errorDescription: String? {
-            "The following applications failed to quit and were not restarted:\n" + failedApps.joined(separator: "\n")
+            AppLanguage.current.localizedString("The following applications failed to quit and were not restarted:\n\(failedApps.joined(separator: "\n"))")
         }
 
         var recoverySuggestion: String? {
-            "You may need to log out for the changes to take effect."
+            AppLanguage.current.localizedString("You may need to log out for the changes to take effect.")
         }
     }
 

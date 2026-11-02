@@ -18,11 +18,10 @@ struct AdvancedSettingsPane: View {
     }
 
     private func formattedToSeconds(_ interval: TimeInterval) -> LocalizedStringKey {
-        let formatted = interval.formatted()
         return if interval == 1 {
-            LocalizedStringKey(formatted + " second")
+            "1 second"
         } else {
-            LocalizedStringKey(formatted + " seconds")
+            "\(interval.formatted()) seconds"
         }
     }
 
@@ -161,7 +160,7 @@ struct AdvancedSettingsPane: View {
                     }
                 }
             } label: {
-                Text(permission.title)
+                Text(LocalizedStringKey(permission.title))
             }
             .frame(height: 22)
         }

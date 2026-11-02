@@ -154,6 +154,7 @@ private final class MenuBarSearchHostingView: NSHostingView<AnyView> {
     ) {
         super.init(
             rootView: MenuBarSearchContentView(closePanel: { [weak panel] in panel?.close() })
+                .modifier(AppLanguageModifier(manager: appState.settingsManager.generalSettingsManager))
                 .environmentObject(appState.itemManager)
                 .environmentObject(appState.imageCache)
                 .erasedToAnyView()
@@ -172,6 +173,8 @@ private final class MenuBarSearchHostingView: NSHostingView<AnyView> {
 }
 
 private struct MenuBarSearchContentView: View {
+    @Environment(\.locale) private var locale
+
     private typealias ListItem = SectionedListItem<ItemID>
 
     private enum ItemID: Hashable {
@@ -245,6 +248,9 @@ private struct MenuBarSearchContentView: View {
             selectFirstDisplayedItem()
         }
         .onChange(of: itemManager.itemCache, initial: true) {
+            updateDisplayedItems()
+        }
+        .onChange(of: locale) {
             updateDisplayedItems()
         }
     }
@@ -374,7 +380,7 @@ private struct ShowItemButton: View {
     var body: some View {
         BottomBarButton(action: action) {
             HStack {
-                Text(item.isOnScreen ? "Click item" : "Show item")
+                Text(item.isOnScreen ? LocalizedStringKey("Click item") : LocalizedStringKey("Show item"))
                     .padding(.horizontal, 5)
 
                 Image(systemName: "return")

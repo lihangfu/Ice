@@ -94,6 +94,7 @@ private final class MenuBarAppearanceEditorPopover: NSPopover {
                     self?.performClose(self)
                 })
             )
+            .modifier(AppLanguageModifier(manager: appState.settingsManager.generalSettingsManager))
             .environmentObject(appState)
             .environmentObject(appState.appearanceManager)
         }

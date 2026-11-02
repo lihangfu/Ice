@@ -140,6 +140,7 @@ extension Defaults {
 
         // MARK: General Settings
 
+        case appleLanguages = "AppleLanguages"
         case showIceIcon = "ShowIceIcon"
         case iceIcon = "IceIcon"
         case customIceIconIsTemplate = "CustomIceIconIsTemplate"

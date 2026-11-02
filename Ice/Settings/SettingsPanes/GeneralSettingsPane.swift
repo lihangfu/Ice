@@ -36,11 +36,10 @@ struct GeneralSettingsPane: View {
     }
 
     private var rehideIntervalKey: LocalizedStringKey {
-        let formatted = manager.rehideInterval.formatted()
         if manager.rehideInterval == 1 {
-            return LocalizedStringKey(formatted + " second")
+            return "1 second"
         } else {
-            return LocalizedStringKey(formatted + " seconds")
+            return "\(manager.rehideInterval.formatted()) seconds"
         }
     }
 
@@ -56,6 +55,7 @@ struct GeneralSettingsPane: View {
         IceForm {
             IceSection {
                 launchAtLogin
+                languagePicker
             }
             IceSection {
                 iceIconOptions
@@ -85,13 +85,22 @@ struct GeneralSettingsPane: View {
 
     @ViewBuilder
     private var launchAtLogin: some View {
-        LaunchAtLogin.Toggle()
+        LaunchAtLogin.Toggle("Launch at login")
+    }
+
+    @ViewBuilder
+    private var languagePicker: some View {
+        IcePicker("Language", selection: manager.bindings.appLanguage) {
+            ForEach(AppLanguage.allCases) { language in
+                Text(LocalizedStringKey(language.title)).tag(language)
+            }
+        }
     }
 
     @ViewBuilder
     private func menuItem(for imageSet: ControlItemImageSet) -> some View {
         Label {
-            Text(imageSet.name.rawValue)
+            Text(LocalizedStringKey(imageSet.name.rawValue))
         } icon: {
             if let nsImage = imageSet.hidden.nsImage(for: appState) {
                 switch imageSet.name {
