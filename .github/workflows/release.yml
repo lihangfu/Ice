@@ -1,0 +1,87 @@
+name: Release Ice
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: ${{ !github.event.deleted }}
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Build Ice
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tags must use the format vMAJOR.MINOR.PATCH."
+            exit 1
+          fi
+
+          xcodebuild -version
+          # Ad-hoc signing needs no Apple certificate. Disable Hardened Runtime
+          # for this build so library validation does not block Sparkle.
+          xcodebuild build \
+            -project Ice.xcodeproj \
+            -scheme Ice \
+            -configuration Release \
+            -destination "generic/platform=macOS" \
+            -derivedDataPath build \
+            -onlyUsePackageVersionsFromResolvedFile \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            MARKETING_VERSION="${GITHUB_REF_NAME#v}" \
+            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY=- \
+            DEVELOPMENT_TEAM= \
+            ENABLE_HARDENED_RUNTIME=NO
+
+      - name: Package and verify Ice.zip
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/Build/Products/Release/Ice.app build/Ice.zip
+          ditto -x -k build/Ice.zip "$RUNNER_TEMP/ice-package-check"
+
+          app="$RUNNER_TEMP/ice-package-check/Ice.app"
+          test -x "$app/Contents/MacOS/Ice"
+          lipo "$app/Contents/MacOS/Ice" -verify_arch arm64 x86_64
+          codesign --verify --deep --strict --verbose=2 "$app"
+          version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app/Contents/Info.plist")
+          test "$version" = "${GITHUB_REF_NAME#v}"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cat > "$RUNNER_TEMP/ice-release-notes.md" <<'EOF'
+          Download Ice.zip, unzip it, and move Ice.app into Applications.
+
+          This build supports Apple Silicon and Intel Macs running macOS 14 or later.
+          It is ad-hoc signed, has Hardened Runtime disabled, and is not notarized by Apple.
+          macOS may block the first launch. Automatic updates still use the upstream Ice feed.
+          EOF
+
+          gh release create "$GITHUB_REF_NAME" build/Ice.zip \
+            --verify-tag \
+            --title "Ice $GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes-file "$RUNNER_TEMP/ice-release-notes.md"

@@ -35,6 +35,39 @@ Install Ice using the following command:
 brew install --cask jordanbaird-ice
 ```
 
+## Releasing this fork
+
+The [Release Ice workflow](.github/workflows/release.yml) builds and publishes
+`Ice.zip` to the repository where the tag is pushed. In this fork, releases are
+published to [lihangfu/Ice](https://github.com/lihangfu/Ice/releases).
+
+Commit and push the workflow before creating a release tag. The tagged commit
+must contain the workflow. Use a new tag in the format `vMAJOR.MINOR.PATCH`:
+
+```sh
+git tag v0.11.12
+git push origin v0.11.12
+```
+
+The workflow uses macOS 15 with Xcode 16.4 to build a Release app for both Apple
+Silicon and Intel Macs. The app version comes from the tag; its build number comes
+from the GitHub Actions run number. These values are set only for the CI build.
+Before publishing, the workflow extracts `Ice.zip` and checks the executable,
+both architectures, the code signature, and the app version.
+
+No custom secrets or Apple certificates are required. GitHub's `GITHUB_TOKEN`
+publishes the release with `contents: write` permission. For a fork, enable GitHub
+Actions in the repository's Actions tab if it is disabled.
+
+These builds use ad-hoc signing, disable Hardened Runtime to allow Sparkle to
+load, and are not notarized by Apple. macOS may block the first launch. The
+Sparkle update feed and Homebrew cask still point to upstream Ice; this workflow
+only publishes GitHub Releases for this fork.
+
+Existing releases are not overwritten. If publishing fails, inspect the release
+for a partially created draft before rerunning the job. To withdraw a bad build,
+remove its release through GitHub; publish corrections under a new tag.
+
 ## Features/Roadmap
 
 ### Menu bar item management
