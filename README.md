@@ -79,8 +79,8 @@ git push origin v0.11.15
 
 The release job runs on a self-hosted macOS runner with Xcode installed at
 `/Applications/Xcode.app`; `python3` and the GitHub CLI (`gh`) must also be
-available in the runner service account's `PATH`. The workflow checks these tools
-before building and uses that Xcode installation to build a Release app for
+available in the runner service account's `PATH` or `~/.local/bin`. The workflow
+checks these tools before building and uses that Xcode installation to build a Release app for
 both Apple Silicon and Intel Macs. The app version comes from the tag; its build
 number comes from the GitHub Actions run number. These values are set only for the CI build.
 Before publishing, the workflow extracts `Ice.zip` and checks the executable,

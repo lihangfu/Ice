@@ -31,6 +31,8 @@ jobs:
 
       - name: Check build tools
         run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           missing_tool=0
           xcodebuild -version || missing_tool=1
           python3 --version || missing_tool=1
