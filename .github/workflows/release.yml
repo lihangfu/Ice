@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 30
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
     defaults:
       run:
         shell: bash
@@ -28,13 +29,30 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Build Ice
+      - name: Validate release configuration
+        env:
+          SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
         run: |
           if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Release tags must use the format vMAJOR.MINOR.PATCH."
             exit 1
           fi
 
+          python3 - <<'PY'
+          import base64
+          import os
+
+          for name in ("SPARKLE_PUBLIC_ED_KEY", "SPARKLE_PRIVATE_ED_KEY"):
+              try:
+                  value = base64.b64decode(os.environ[name], validate=True)
+              except (KeyError, ValueError):
+                  raise SystemExit(f"::error::Configure {name} with a base64-encoded Sparkle key.")
+              if not value or (name == "SPARKLE_PUBLIC_ED_KEY" and len(value) != 32):
+                  raise SystemExit(f"::error::Configure {name} with a valid Sparkle key.")
+          PY
+
+      - name: Build Ice
+        run: |
           xcodebuild -version
           # Ad-hoc signing needs no Apple certificate. Disable Hardened Runtime
           # for this build so library validation does not block Sparkle.
@@ -49,6 +67,7 @@ jobs:
             ONLY_ACTIVE_ARCH=NO \
             MARKETING_VERSION="${GITHUB_REF_NAME#v}" \
             CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
+            SPARKLE_PUBLIC_ED_KEY="$SPARKLE_PUBLIC_ED_KEY" \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY=- \
             DEVELOPMENT_TEAM= \
@@ -66,6 +85,50 @@ jobs:
           codesign --verify --deep --strict --verbose=2 "$app"
           version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app/Contents/Info.plist")
           test "$version" = "${GITHUB_REF_NAME#v}"
+          feed=$(/usr/libexec/PlistBuddy -c "Print :SUFeedURL" "$app/Contents/Info.plist")
+          test "$feed" = "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/appcast.xml"
+          public_key=$(/usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" "$app/Contents/Info.plist")
+          test "$public_key" = "$SPARKLE_PUBLIC_ED_KEY"
+
+      - name: Generate and verify update feed
+        env:
+          SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
+        run: |
+          sparkle_bin="build/SourcePackages/artifacts/sparkle/Sparkle/bin"
+          mkdir -p build/updates
+          cp build/Ice.zip build/updates/Ice.zip
+          printf '%s\n' "$SPARKLE_PRIVATE_ED_KEY" | "$sparkle_bin/generate_appcast" \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/" \
+            --link "https://github.com/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME" \
+            --maximum-deltas 0 \
+            -o build/appcast.xml build/updates
+
+          signature=$(python3 - <<'PY'
+          import os
+          import plistlib
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+
+          ns = {"sparkle": "http://www.andymatuschak.org/xml-namespaces/sparkle"}
+          items = ET.parse("build/appcast.xml").findall("./channel/item")
+          assert len(items) == 1, "Expected exactly one update"
+          item = items[0]
+          enclosure = item.find("enclosure")
+          expected_url = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{os.environ['GITHUB_REF_NAME']}/Ice.zip"
+          assert enclosure is not None and enclosure.get("url") == expected_url, "Incorrect update URL"
+          assert int(enclosure.get("length")) == Path("build/Ice.zip").stat().st_size, "Incorrect archive size"
+          with open("build/Build/Products/Release/Ice.app/Contents/Info.plist", "rb") as file:
+              info = plistlib.load(file)
+          assert item.findtext("sparkle:version", namespaces=ns) == info["CFBundleVersion"], "Incorrect build number"
+          assert item.findtext("sparkle:shortVersionString", namespaces=ns) == info["CFBundleShortVersionString"], "Incorrect app version"
+          signature = enclosure.get(f"{{{ns['sparkle']}}}edSignature")
+          assert signature, "Missing update signature; check that the public and private keys match"
+          print(signature)
+          PY
+          )
+          printf '%s\n' "$SPARKLE_PRIVATE_ED_KEY" | "$sparkle_bin/sign_update" \
+            --ed-key-file - --verify build/Ice.zip "$signature"
 
       - name: Publish GitHub Release
         env:
@@ -75,12 +138,14 @@ jobs:
           cat > "$RUNNER_TEMP/ice-release-notes.md" <<'EOF'
           Download Ice.zip, unzip it, and move Ice.app into Applications.
 
+          Install this release manually once to switch from the upstream update feed.
+
           This build supports Apple Silicon and Intel Macs running macOS 14 or later.
           It is ad-hoc signed, has Hardened Runtime disabled, and is not notarized by Apple.
-          macOS may block the first launch. Automatic updates still use the upstream Ice feed.
+          macOS may block the first launch. Automatic and manual update checks use this repository's update feed.
           EOF
 
-          gh release create "$GITHUB_REF_NAME" build/Ice.zip \
+          gh release create "$GITHUB_REF_NAME" build/Ice.zip build/appcast.xml \
             --verify-tag \
             --title "Ice $GITHUB_REF_NAME" \
             --generate-notes \
