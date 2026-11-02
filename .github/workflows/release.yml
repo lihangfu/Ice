@@ -18,6 +18,7 @@ jobs:
     runs-on: self-hosted
     timeout-minutes: 30
     env:
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
       SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
     defaults:
       run:
@@ -30,9 +31,11 @@ jobs:
 
       - name: Check build tools
         run: |
-          xcodebuild -version
-          python3 --version
-          gh --version
+          missing_tool=0
+          xcodebuild -version || missing_tool=1
+          python3 --version || missing_tool=1
+          gh --version || missing_tool=1
+          exit "$missing_tool"
 
       - name: Validate release configuration
         env:
