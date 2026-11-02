@@ -15,10 +15,10 @@ concurrency:
 jobs:
   release:
     if: ${{ !github.event.deleted }}
-    runs-on: self-hosted
+    runs-on: macos-15-intel
     timeout-minutes: 30
     env:
-      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
       SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
     defaults:
       run:
@@ -28,16 +28,6 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
-
-      - name: Check build tools
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          missing_tool=0
-          xcodebuild -version || missing_tool=1
-          python3 --version || missing_tool=1
-          gh --version || missing_tool=1
-          exit "$missing_tool"
 
       - name: Validate release configuration
         env:
@@ -63,6 +53,7 @@ jobs:
 
       - name: Build Ice
         run: |
+          xcodebuild -version
           # Ad-hoc signing needs no Apple certificate. Disable Hardened Runtime
           # for this build so library validation does not block Sparkle.
           xcodebuild build \
