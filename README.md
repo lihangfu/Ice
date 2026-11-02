@@ -77,9 +77,12 @@ git tag v0.11.15
 git push origin v0.11.15
 ```
 
-The workflow uses macOS 15 with Xcode 16.4 to build a Release app for both Apple
-Silicon and Intel Macs. The app version comes from the tag; its build number comes
-from the GitHub Actions run number. These values are set only for the CI build.
+The release job runs on a self-hosted macOS runner. Install a full Xcode toolchain
+and select it with `xcode-select`; `python3` and the GitHub CLI (`gh`) must also be
+available in the runner service account's `PATH`. The workflow checks these tools
+before building and uses the runner's selected Xcode to build a Release app for
+both Apple Silicon and Intel Macs. The app version comes from the tag; its build
+number comes from the GitHub Actions run number. These values are set only for the CI build.
 Before publishing, the workflow extracts `Ice.zip` and checks the executable,
 both architectures, the code signature, the app version, and the update settings.
 It then uses the pinned Sparkle package's tools to sign the archive, generate the
