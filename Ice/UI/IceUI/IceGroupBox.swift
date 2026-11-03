@@ -6,6 +6,8 @@
 import SwiftUI
 
 struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     private let header: Header
     private let content: Content
     private let footer: Footer
@@ -90,7 +92,7 @@ struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
             .padding(padding)
             .background {
                 backgroundShape
-                    .fill(.quinary)
+                    .fill(.quinary.opacity(colorScheme == .light ? 0.5 : 1))
                     .overlay {
                         backgroundShape
                             .strokeBorder(.quaternary)
