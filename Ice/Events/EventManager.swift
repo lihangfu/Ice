@@ -58,6 +58,7 @@ final class EventManager {
         mask: .mouseMoved
     ) { [weak self] event in
         self?.handleShowOnHover()
+        self?.handleRehideOnMouseLeave()
         return event
     }
 
@@ -248,6 +249,28 @@ extension EventManager {
             for section in appState.menuBarManager.sections {
                 section.hide()
             }
+        }
+    }
+
+    // MARK: Handle Rehide On Mouse Leave
+
+    private func handleRehideOnMouseLeave() {
+        guard
+            let appState,
+            appState.settingsManager.generalSettingsManager.autoRehide,
+            case .mouseLeave = appState.settingsManager.generalSettingsManager.rehideStrategy,
+            !isMouseInsideMenuBar
+        else {
+            return
+        }
+
+        let iceBarPanel = appState.menuBarManager.iceBarPanel
+        guard !iceBarPanel.isVisible || !isMouseInsideIceBar else {
+            return
+        }
+
+        for section in appState.menuBarManager.sections {
+            section.hide()
         }
     }
 

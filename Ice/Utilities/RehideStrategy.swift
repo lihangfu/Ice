@@ -13,6 +13,8 @@ enum RehideStrategy: Int, CaseIterable, Identifiable {
     case timed = 1
     /// Menu bar items are rehidden when the focused app changes.
     case focusedApp = 2
+    /// Menu bar items are rehidden when the mouse leaves the menu bar or Ice Bar.
+    case mouseLeave = 3
 
     var id: Int { rawValue }
 
@@ -22,6 +24,7 @@ enum RehideStrategy: Int, CaseIterable, Identifiable {
         case .smart: "Smart"
         case .timed: "Timed"
         case .focusedApp: "Focused app"
+        case .mouseLeave: "On mouse leave"
         }
     }
 }

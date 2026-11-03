@@ -307,6 +307,8 @@ struct GeneralSettingsPane: View {
                 Text("Menu bar items are rehidden after a fixed amount of time")
             case .focusedApp:
                 Text("Menu bar items are rehidden when the focused app changes")
+            case .mouseLeave:
+                Text("Menu bar items are rehidden when the mouse leaves the menu bar or Ice Bar")
             }
         }
     }

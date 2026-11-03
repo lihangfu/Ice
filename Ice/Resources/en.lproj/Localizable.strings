@@ -106,6 +106,7 @@
 "Menu bar items are rehidden after a fixed amount of time" = "Menu bar items are rehidden after a fixed amount of time";
 "Menu bar items are rehidden using a smart algorithm" = "Menu bar items are rehidden using a smart algorithm";
 "Menu bar items are rehidden when the focused app changes" = "Menu bar items are rehidden when the focused app changes";
+"Menu bar items are rehidden when the mouse leaves the menu bar or Ice Bar" = "Menu bar items are rehidden when the mouse leaves the menu bar or Ice Bar";
 "Menu bar layout requires screen recording permissions" = "Menu bar layout requires screen recording permissions";
 "Mouse pointer" = "Mouse pointer";
 "Music Recognition" = "Music Recognition";
@@ -116,6 +117,7 @@
 "Note: You may need to log out and back in for this setting to apply properly." = "Note: You may need to log out and back in for this setting to apply properly.";
 "Now Playing" = "Now Playing";
 "OK" = "OK";
+"On mouse leave" = "On mouse leave";
 "Open Ice Settings" = "Open Ice Settings";
 "Operation timed out for \"%@\"" = "Operation timed out for \"%@\"";
 "Option + click one of Ice's menu bar items to show the section" = "Option + click one of Ice's menu bar items to show the section";

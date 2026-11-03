@@ -37,9 +37,11 @@
 "Smart" = "智能";
 "Timed" = "定时";
 "Focused app" = "前台应用";
+"On mouse leave" = "失焦";
 "Menu bar items are rehidden using a smart algorithm" = "使用智能算法重新隐藏菜单栏项目";
 "Menu bar items are rehidden after a fixed amount of time" = "经过指定时间后，重新隐藏菜单栏项目";
 "Menu bar items are rehidden when the focused app changes" = "切换前台应用时，重新隐藏菜单栏项目";
+"Menu bar items are rehidden when the mouse leaves the menu bar or Ice Bar" = "鼠标离开菜单栏或 Ice Bar 后，自动隐藏菜单栏项目";
 "1 second" = "1 秒";
 "%@ seconds" = "%@ 秒";
 "Menu bar item spacing" = "菜单栏项目间距";
