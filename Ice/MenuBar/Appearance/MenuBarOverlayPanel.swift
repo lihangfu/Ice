@@ -771,11 +771,16 @@ private final class MenuBarOverlayPanelContentView: NSView {
         let blurView = overlayPanel.wallpaperBlurView
         blurView.frame = drawableBounds
         var transform = CGAffineTransform(translationX: -drawableBounds.minX, y: -drawableBounds.minY)
-        if let clip = shapePath.cgPath.copy(using: &transform), overlayPanel.isVisible,
-           overlayPanel.appState?.menuBarManager.isMenuBarHiddenBySystem != true,
-           !overlayPanel.isDraggingMenuBarItem {
-            blurView.update(source: overlayPanel.wallpaperBlurSource,
-                            radius: fullConfiguration.wallpaperBlurRadius, shape: clip)
+        if
+            let clip = shapePath.cgPath.copy(using: &transform), overlayPanel.isVisible,
+            overlayPanel.appState?.menuBarManager.isMenuBarHiddenBySystem != true,
+            !overlayPanel.isDraggingMenuBarItem
+        {
+            blurView.update(
+                source: overlayPanel.wallpaperBlurSource,
+                radius: fullConfiguration.wallpaperBlurRadius,
+                shape: clip
+            )
         } else {
             blurView.suspend()
         }

@@ -12,12 +12,16 @@ struct IceApp: App {
 
     init() {
         #if SWIFT_PACKAGE
-        if let index = CommandLine.arguments.firstIndex(of: "--validate-wallpaper-blur"),
-           CommandLine.arguments.indices.contains(index + 1) {
+        if
+            let index = CommandLine.arguments.firstIndex(of: "--validate-wallpaper-blur"),
+            CommandLine.arguments.indices.contains(index + 1)
+        {
             exit(LocalBuildValidation.validateWallpaperBlur(to: URL(fileURLWithPath: CommandLine.arguments[index + 1])))
         }
-        if let index = CommandLine.arguments.firstIndex(of: "--validate-appearance"),
-           CommandLine.arguments.indices.contains(index + 1) {
+        if
+            let index = CommandLine.arguments.firstIndex(of: "--validate-appearance"),
+            CommandLine.arguments.indices.contains(index + 1)
+        {
             exit(LocalBuildValidation.renderAppearance(to: URL(fileURLWithPath: CommandLine.arguments[index + 1])))
         }
         if CommandLine.arguments.contains("--validate-build") {
