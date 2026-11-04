@@ -31,23 +31,38 @@ final class LayoutBarItemView: NSView {
     /// A Boolean value that indicates whether the item view is currently inside a container.
     var hasContainer = false
 
-    /// The image displayed inside the view.
-    private var image: NSImage? {
-        didSet {
-            if
-                let image,
-                let screen = appState?.imageCache.screen
-            {
-                let size = CGSize(
-                    width: image.size.width / screen.backingScaleFactor,
-                    height: image.size.height / screen.backingScaleFactor
-                )
-                setFrameSize(size)
-            } else {
-                setFrameSize(.zero)
-            }
-            needsDisplay = true
+    private var originalImage: CGImage?
+    private var monochromeMask: CGImage?
+
+    /// The same resolved image is used for drawing and the dragging session.
+    var displayedImage: NSImage? {
+        guard let originalImage else { return nil }
+        guard let monochromeMask else {
+            return NSImage(cgImage: originalImage, size: bounds.size)
         }
+        let mask = NSImage(cgImage: monochromeMask, size: bounds.size)
+        var color = NSColor.labelColor
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            color = NSColor.labelColor.usingColorSpace(.deviceRGB) ?? .labelColor
+        }
+        return NSImage(size: bounds.size, flipped: false) { rect in
+            mask.draw(in: rect)
+            color.setFill()
+            rect.fill(using: .sourceIn)
+            return true
+        }
+    }
+
+    func updateImage(_ image: CGImage, monochromeMask: CGImage?, scale: CGFloat) {
+        originalImage = image
+        self.monochromeMask = monochromeMask
+        setFrameSize(CGSize(width: CGFloat(image.width) / scale, height: CGFloat(image.height) / scale))
+        needsDisplay = true
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        needsDisplay = true
     }
 
     /// A Boolean value that indicates whether the item view is a dragging placeholder.
@@ -91,14 +106,16 @@ final class LayoutBarItemView: NSView {
 
         if let appState {
             appState.imageCache.$images
-                .sink { [weak self] images in
+                .sink { [weak self, weak appState] images in
                     guard
                         let self,
-                        let cgImage = images[item.info]
+                        let appState,
+                        let cgImage = images[item.info],
+                        let screen = appState.imageCache.screen
                     else {
                         return
                     }
-                    image = NSImage(cgImage: cgImage, size: CGSize(width: cgImage.width, height: cgImage.height))
+                    updateImage(cgImage, monochromeMask: appState.imageCache.monochromeMasks[item.info], scale: screen.backingScaleFactor)
                 }
                 .store(in: &c)
         }
@@ -123,7 +140,7 @@ final class LayoutBarItemView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         if !isDraggingPlaceholder {
-            image?.draw(
+            displayedImage?.draw(
                 in: bounds,
                 from: .zero,
                 operation: .sourceOver,
@@ -171,7 +188,7 @@ final class LayoutBarItemView: NSView {
         pasteboardItem.setData(Data(), forType: .layoutBarItem)
 
         let draggingItem = NSDraggingItem(pasteboardWriter: pasteboardItem)
-        draggingItem.setDraggingFrame(bounds, contents: image)
+        draggingItem.setDraggingFrame(bounds, contents: displayedImage)
 
         beginDraggingSession(with: [draggingItem], event: event, source: self)
     }

@@ -86,6 +86,23 @@ Ice Bar material follows light/dark appearance changes on the same panel:
 build/Ice.app/Contents/MacOS/Ice --validate-appearance build/appearance-validation
 ```
 
+The appearance validation also checks monochrome icon rendering, colored badge
+preservation and transparent cutouts, and captures live status item comparisons.
+The settings layout checks also cover native drawing, drag preview colors,
+disabled-item dimming, hit testing and placeholder geometry without moving menu
+items. These icon captures require screen recording access. To verify that the contrast
+check catches the original white-on-light failure, run the negative control
+(expected to exit unsuccessfully):
+
+```sh
+build/Ice.app/Contents/MacOS/Ice --validate-appearance build/icon-negative --original-ice-bar-icons-control
+```
+
+For the equivalent settings layout negative control, use
+`--original-layout-icons-control` instead.
+
+
+
 ## Releasing this fork
 
 The [Release Ice workflow](.github/workflows/release.yml) builds and publishes
@@ -221,7 +238,12 @@ Ice uses a number of system APIs that are available starting in macOS 14. As suc
 
 The Ice Bar uses a native frosted background that blurs the windows behind it
 while keeping menu bar icons sharp. It respects macOS Reduce Transparency,
-which replaces the blur with a solid background.
+which replaces the blur with a solid background. Monochrome icons with transparent
+backgrounds adapt to the system light/dark appearance. Colored or ambiguous
+captures keep their original colors, including mixed icons with status badges.
+This adaptation applies to Ice Bar and the visible, hidden, and always-hidden
+sections in settings. Drag previews use the same themed colors. Search results
+keep the originals.
 
 ![Ice Bar](https://github.com/user-attachments/assets/f1429589-6186-4e1b-8aef-592219d49b9b)
 

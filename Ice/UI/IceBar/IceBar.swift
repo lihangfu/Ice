@@ -398,30 +398,20 @@ private struct IceBarItemView: View {
         }
     }
 
-    private var image: NSImage? {
-        guard
-            let image = imageCache.images[item.info],
-            let screen = imageCache.screen
-        else {
-            return nil
-        }
-        let size = CGSize(
-            width: CGFloat(image.width) / screen.backingScaleFactor,
-            height: CGFloat(image.height) / screen.backingScaleFactor
-        )
-        return NSImage(cgImage: image, size: size)
-    }
-
     var body: some View {
-        if let image {
-            Image(nsImage: image)
-                .contentShape(Rectangle())
-                .overlay {
-                    IceBarItemClickView(item: item, leftClickAction: leftClickAction, rightClickAction: rightClickAction)
-                }
-                .accessibilityLabel(item.displayName)
-                .accessibilityAction(named: "left click", leftClickAction)
-                .accessibilityAction(named: "right click", rightClickAction)
+        if let image = imageCache.images[item.info], let screen = imageCache.screen {
+            IceBarIcon(
+                image: image,
+                monochromeMask: imageCache.monochromeMasks[item.info],
+                scale: screen.backingScaleFactor
+            )
+            .contentShape(Rectangle())
+            .overlay {
+                IceBarItemClickView(item: item, leftClickAction: leftClickAction, rightClickAction: rightClickAction)
+            }
+            .accessibilityLabel(item.displayName)
+            .accessibilityAction(named: "left click", leftClickAction)
+            .accessibilityAction(named: "right click", rightClickAction)
         }
     }
 }

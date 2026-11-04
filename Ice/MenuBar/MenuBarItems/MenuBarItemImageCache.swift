@@ -11,6 +11,9 @@ final class MenuBarItemImageCache: ObservableObject {
     /// The cached item images.
     @Published private(set) var images = [MenuBarItemInfo: CGImage]()
 
+    /// Optional templates shared by Ice Bar and settings layout previews, refreshed before publishing the matching originals.
+    private(set) var monochromeMasks = [MenuBarItemInfo: CGImage]()
+
     /// The screen of the cached item images.
     private(set) var screen: NSScreen?
 
@@ -212,12 +215,16 @@ final class MenuBarItemImageCache: ObservableObject {
             newImages.merge(sectionImages) { (_, new) in new }
         }
 
-        await MainActor.run { [newImages] in
+        let newMasks = newImages.compactMapValues { MenuBarIconAppearance.monochromeMask(from: $0) }
+        await MainActor.run { [newImages, newMasks] in
+            for key in newImages.keys {
+                // A previously monochrome item may acquire a colored status badge.
+                monochromeMasks[key] = newMasks[key]
+            }
+            self.screen = screen
+            self.menuBarHeight = screen.getMenuBarHeight()
             images.merge(newImages) { (_, new) in new }
         }
-
-        self.screen = screen
-        self.menuBarHeight = screen.getMenuBarHeight()
     }
 
     /// Updates the cache for the given sections, if necessary.
