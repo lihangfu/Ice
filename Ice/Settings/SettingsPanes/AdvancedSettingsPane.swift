@@ -7,7 +7,6 @@ import SwiftUI
 
 struct AdvancedSettingsPane: View {
     @EnvironmentObject var appState: AppState
-    @State private var maxSliderLabelWidth: CGFloat = 0
 
     private var menuBarManager: MenuBarManager {
         appState.menuBarManager
@@ -27,6 +26,7 @@ struct AdvancedSettingsPane: View {
 
     var body: some View {
         IceForm {
+            SettingsPageHeader(identifier: .advanced)
             IceSection {
                 hideApplicationMenus
                 showSectionDividers
@@ -49,29 +49,14 @@ struct AdvancedSettingsPane: View {
 
     @ViewBuilder
     private var hideApplicationMenus: some View {
-        Toggle("Hide application menus when showing menu bar items", isOn: manager.bindings.hideApplicationMenus)
-            .annotation("Make more room in the menu bar by hiding the left application menus if needed")
+        IceToggle("Hide application menus when showing menu bar items", isOn: manager.bindings.hideApplicationMenus)
+            .settingHelp("Make more room in the menu bar by hiding the left application menus if needed")
     }
 
     @ViewBuilder
     private var showSectionDividers: some View {
-        Toggle("Show section dividers", isOn: manager.bindings.showSectionDividers)
-            .annotation {
-                HStack(spacing: 2) {
-                    Text("Insert divider items")
-                    if let nsImage = ControlItemImage.builtin(.chevronLarge).nsImage(for: appState) {
-                        HStack(spacing: 0) {
-                            Text("(")
-                                .font(.body.monospaced().bold())
-                            Image(nsImage: nsImage)
-                                .padding(.horizontal, -2)
-                            Text(")")
-                                .font(.body.monospaced().bold())
-                        }
-                    }
-                    Text("between sections")
-                }
-            }
+        IceToggle("Show section dividers", isOn: manager.bindings.showSectionDividers)
+            .settingHelp("Insert divider items (›) between sections")
     }
 
     @ViewBuilder
@@ -82,14 +67,16 @@ struct AdvancedSettingsPane: View {
     @ViewBuilder
     private var canToggleAlwaysHiddenSection: some View {
         if manager.enableAlwaysHiddenSection {
-            Toggle("Always-hidden section can be shown", isOn: manager.bindings.canToggleAlwaysHiddenSection)
-                .annotation {
-                    if appState.settingsManager.generalSettingsManager.showOnClick {
-                        Text("Option + click one of Ice's menu bar items, or inside an empty area of the menu bar to show the section")
-                    } else {
-                        Text("Option + click one of Ice's menu bar items to show the section")
-                    }
-                }
+            IceToggle("Always-hidden section can be shown", isOn: manager.bindings.canToggleAlwaysHiddenSection)
+                .settingHelp(alwaysHiddenSectionHelp)
+        }
+    }
+
+    private var alwaysHiddenSectionHelp: Text {
+        if appState.settingsManager.generalSettingsManager.showOnClick {
+            Text("Option + click one of Ice's menu bar items, or inside an empty area of the menu bar to show the section")
+        } else {
+            Text("Option + click one of Ice's menu bar items to show the section")
         }
     }
 
@@ -105,12 +92,8 @@ struct AdvancedSettingsPane: View {
         } label: {
             Text("Show on hover delay")
                 .frame(minHeight: .compactSliderMinHeight)
-                .frame(minWidth: maxSliderLabelWidth, alignment: .leading)
-                .onFrameChange { frame in
-                    maxSliderLabelWidth = max(maxSliderLabelWidth, frame.width)
-                }
         }
-        .annotation("The amount of time to wait before showing on hover")
+        .settingHelp("The amount of time to wait before showing on hover")
     }
 
     @ViewBuilder
@@ -125,12 +108,8 @@ struct AdvancedSettingsPane: View {
         } label: {
             Text("Temporarily shown item delay")
                 .frame(minHeight: .compactSliderMinHeight)
-                .frame(minWidth: maxSliderLabelWidth, alignment: .leading)
-                .onFrameChange { frame in
-                    maxSliderLabelWidth = max(maxSliderLabelWidth, frame.width)
-                }
         }
-        .annotation("The amount of time to wait before hiding temporarily shown menu bar items")
+        .settingHelp("The amount of time to wait before hiding temporarily shown menu bar items")
     }
 
     @ViewBuilder
@@ -167,8 +146,10 @@ struct AdvancedSettingsPane: View {
     }
 }
 
+#if !SWIFT_PACKAGE
 #Preview {
     AdvancedSettingsPane()
         .fixedSize()
         .environmentObject(AppState())
 }
+#endif

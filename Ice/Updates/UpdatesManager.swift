@@ -20,7 +20,7 @@ final class UpdatesManager: NSObject, ObservableObject {
 
     /// The underlying updater controller.
     private(set) lazy var updaterController = SPUStandardUpdaterController(
-        startingUpdater: true,
+        startingUpdater: !Constants.isLocalBuild,
         updaterDelegate: self,
         userDriverDelegate: self
     )

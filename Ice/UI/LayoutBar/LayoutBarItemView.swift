@@ -130,7 +130,7 @@ final class LayoutBarItemView: NSView {
                 fraction: isEnabled ? 1.0 : 0.67
             )
             if Bridging.responsivity(for: item.ownerPID) == .unresponsive {
-                let warningImage = NSImage.warning
+                let warningImage = IceAssets.requiredImage(named: "Warning")
                 let width: CGFloat = 15
                 let scale = width / warningImage.size.width
                 let size = CGSize(

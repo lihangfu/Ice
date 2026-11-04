@@ -20,19 +20,19 @@ struct SettingsView: View {
 
     private var sidebarItemHeight: CGFloat {
         switch sidebarRowSize {
-        case .small: 26
-        case .medium: 32
+        case .small: 24
+        case .medium: 28
         case .large: 34
-        @unknown default: 32
+        @unknown default: 28
         }
     }
 
     private var sidebarItemFontSize: CGFloat {
         switch sidebarRowSize {
         case .small: 13
-        case .medium: 15
-        case .large: 16
-        @unknown default: 15
+        case .medium: 13
+        case .large: 15
+        @unknown default: 13
         }
     }
 
@@ -41,6 +41,9 @@ struct SettingsView: View {
             sidebar
         } detail: {
             detailView
+                .environment(\.iceFormStyle, .settings)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(nsColor: .windowBackgroundColor))
         }
         .navigationTitle(navigationState.settingsNavigationIdentifier.localized)
     }
@@ -48,19 +51,24 @@ struct SettingsView: View {
     @ViewBuilder
     private var sidebar: some View {
         List(selection: $navigationState.settingsNavigationIdentifier) {
-            Section {
-                ForEach(SettingsNavigationIdentifier.allCases, id: \.self) { identifier in
-                    sidebarItem(for: identifier)
-                }
-            } header: {
-                Text("Ice")
-                    .font(.system(size: 36, weight: .medium))
-                    .foregroundStyle(.primary)
-                    .padding(.vertical, 5)
+            ForEach(SettingsNavigationIdentifier.allCases, id: \.self) { identifier in
+                sidebarItem(for: identifier)
+                    .tag(identifier)
             }
-            .collapsible(false)
         }
-        .scrollDisabled(true)
+        .listStyle(.sidebar)
+        .safeAreaInset(edge: .top, spacing: 8) {
+            HStack(spacing: 10) {
+                SettingsPaneIcon(identifier: .about, size: 28)
+                Text("Ice")
+                    .font(.system(size: 17, weight: .semibold))
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .accessibilityElement(children: .combine)
+        }
         .removeSidebarToggle()
         .navigationSplitViewColumnWidth(sidebarWidth)
     }
@@ -85,24 +93,14 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func sidebarItem(for identifier: SettingsNavigationIdentifier) -> some View {
-        Label {
+        HStack(spacing: 10) {
+            SettingsPaneIcon(identifier: identifier, size: sidebarItemHeight - 6)
             Text(identifier.localized)
                 .font(.system(size: sidebarItemFontSize))
-                .padding(.leading, 2)
-        } icon: {
-            icon(for: identifier).view
+            Spacer(minLength: 0)
         }
-        .frame(height: sidebarItemHeight)
-    }
-
-    private func icon(for identifier: SettingsNavigationIdentifier) -> IconResource {
-        switch identifier {
-        case .general: .systemSymbol("gearshape")
-        case .menuBarLayout: .systemSymbol("rectangle.topthird.inset.filled")
-        case .menuBarAppearance: .systemSymbol("swatchpalette")
-        case .hotkeys: .systemSymbol("keyboard")
-        case .advanced: .systemSymbol("gearshape.2")
-        case .about: .assetCatalog(.iceCubeStroke)
-        }
+        .frame(minHeight: sidebarItemHeight)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
     }
 }

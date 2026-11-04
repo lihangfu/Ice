@@ -363,7 +363,7 @@ private struct SettingsButton: View {
 
     var body: some View {
         BottomBarButton(action: action) {
-            Image(.iceCubeStroke)
+            Image(nsImage: IceAssets.requiredImage(named: "IceCubeStroke"))
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 18, height: 18)

@@ -7,6 +7,8 @@ import SwiftUI
 
 struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.iceFormStyle) private var style
 
     private let header: Header
     private let content: Content
@@ -14,7 +16,10 @@ struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
     private let padding: CGFloat
 
     private var backgroundShape: some InsettableShape {
-        RoundedRectangle(cornerRadius: 6, style: .circular)
+        RoundedRectangle(
+            cornerRadius: style == .settings ? 8 : 6,
+            style: style == .settings ? .continuous : .circular
+        )
     }
 
     init(
@@ -91,12 +96,26 @@ struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
             }
             .padding(padding)
             .background {
-                backgroundShape
-                    .fill(.quinary.opacity(colorScheme == .light ? 0.5 : 1))
-                    .overlay {
-                        backgroundShape
-                            .strokeBorder(.quaternary)
-                    }
+                if style == .settings {
+                    backgroundShape
+                        .fill(Color(nsColor: .windowBackgroundColor))
+                        .overlay {
+                            backgroundShape.fill(.primary.opacity(colorScheme == .light ? 0.015 : 0.045))
+                        }
+                        .overlay {
+                            backgroundShape.strokeBorder(
+                                Color(nsColor: .separatorColor).opacity(contrast == .increased ? 1 : 0.5),
+                                lineWidth: contrast == .increased ? 1 : 0.5
+                            )
+                        }
+                } else {
+                    backgroundShape
+                        .fill(.quinary.opacity(colorScheme == .light ? 0.5 : 1))
+                        .overlay {
+                            backgroundShape
+                                .strokeBorder(.quaternary)
+                        }
+                }
             }
             footer
         }

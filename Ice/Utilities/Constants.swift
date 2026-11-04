@@ -6,6 +6,9 @@
 import Foundation
 
 enum Constants {
+    /// Local app bundles must not be replaced by the release updater.
+    static let isLocalBuild = Bundle.main.object(forInfoDictionaryKey: "IceLocalBuild") as? Bool ?? false
+
     // swiftlint:disable force_unwrapping
     /// The version string in the app's bundle.
     static let versionString = Bundle.main.versionString!

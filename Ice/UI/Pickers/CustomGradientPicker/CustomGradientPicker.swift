@@ -420,7 +420,7 @@ private struct CustomGradientPickerHandle: View {
     }
 }
 
-#if DEBUG
+#if DEBUG && !SWIFT_PACKAGE
 private struct CustomGradientPickerPreview: View {
     @State private var gradient = CustomGradient(unsortedStops: [
         ColorStop(color: NSColor.systemRed.cgColor, location: 0),

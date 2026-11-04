@@ -35,6 +35,68 @@ Install Ice using the following command:
 brew install --cask jordanbaird-ice
 ```
 
+## Build and run locally without Xcode
+
+Requires macOS 14 or later and Command Line Tools with Swift 6 or later. Install
+Apple's tools with `xcode-select --install` if needed. Full Xcode is not required.
+The first build needs network access to download the dependencies pinned by the
+existing Xcode `Package.resolved`; later builds reuse the SwiftPM cache.
+
+```sh
+./scripts/run-app.sh
+```
+
+This builds the current source for your Mac's architecture, packages and locally
+signs `build/Ice.app`, then opens it. Quit a running `build/Ice.app` before rebuilding.
+To build without launching, or to make an optimized local build:
+
+```sh
+./scripts/build-app.sh
+./scripts/build-app.sh release
+```
+
+Use the packaged `.app`, not `swift run`: Ice needs its bundle metadata, icons,
+translations and embedded Sparkle framework. The scripts use Python 3 supplied
+with Command Line Tools and built-in macOS packaging tools. They don't install or
+replace `/Applications/Ice.app`. The local app shares Ice's bundle identifier and
+preferences; macOS may ask you to grant Accessibility and Screen Recording again
+for the locally signed binary. Quit any other Ice instance before using it.
+
+Local builds disable online updates so a release cannot replace your development
+app. They use ad-hoc signing and are not notarized. Distribution continues to use
+the Xcode release workflow below, including its update-signing key.
+
+After building, verify the real bundle and localization:
+
+```sh
+python3 Tests/run-build-tests.py
+bash Tests/run-localization-tests.sh
+```
+
+The bundle check runs the actual executable before migrations or permission
+requests. It verifies assets, image scales, light/dark colors, translations,
+metadata, signature and relocation, and checks that missing resources fail.
+It also checks legacy appearance migration. It does not exercise menu bar
+manipulation or grant macOS permissions. To render the actual appearance editor
+in both system themes without changing saved settings:
+
+```sh
+build/Ice.app/Contents/MacOS/Ice --validate-appearance build/appearance-validation
+```
+
+To exercise wallpaper processing and live menu bar composition without saving
+settings (temporarily changes the visible menu bar background):
+
+```sh
+build/Ice.app/Contents/MacOS/Ice --validate-wallpaper-blur build/wallpaper-blur-validation
+```
+
+This checks fractional persistence, invalid input, blur texture reduction,
+black/white foreground pixels, clipping and restoration, and saves screenshots.
+It requires screen capture access. Without Accessibility authorization it calls
+the production capture/drawing path directly and reports that menu discovery,
+actual split geometry and menu interaction remain unverified.
+
 ## Releasing this fork
 
 The [Release Ice workflow](.github/workflows/release.yml) builds and publishes
@@ -111,6 +173,11 @@ build number. A source rollback alone does not change already installed apps.
 
 ## Features/Roadmap
 
+Settings show contextual explanations behind the circled question mark next to
+each relevant setting's name. Hover to read the explanation, or activate the help
+button with a click or keyboard to open it in a popover. Operational warnings and
+status messages remain visible in the settings page.
+
 ### Menu bar item management
 
 - [x] Hide menu bar items
@@ -163,6 +230,10 @@ Ice uses a number of system APIs that are available starting in macOS 14. As suc
 
 #### Show hidden menu bar items below the menu bar
 
+The Ice Bar uses a native frosted background that blurs the windows behind it
+while keeping menu bar icons sharp. It respects macOS Reduce Transparency,
+which replaces the blur with a solid background.
+
 ![Ice Bar](https://github.com/user-attachments/assets/f1429589-6186-4e1b-8aef-592219d49b9b)
 
 #### Drag-and-drop interface to arrange menu bar items
@@ -170,6 +241,25 @@ Ice uses a number of system APIs that are available starting in macOS 14. As suc
 ![Menu Bar Layout](https://github.com/user-attachments/assets/095442ba-f2d0-4bb4-9632-91e26ef8d45b)
 
 #### Customize the menu bar's appearance
+
+Tint, shadow, border and shape use one shared configuration in both system
+appearances. When upgrading from dynamic appearance settings, Ice preserves
+the configuration active at the first launch and uses it for subsequent launches.
+The separate light/dark editors and preview controls are no longer available.
+
+The **Background blur** slider continuously adjusts a blurred wallpaper crop
+behind the system menu bar text and icons (0–100%, mapping to a 0–30 point
+radius). Zero restores the original system background; it does not remove the
+system's own blur. The wallpaper is sampled every five seconds and after space
+or appearance changes, so animated wallpaper is not reproduced frame by frame.
+Rounded and split shapes keep the unblurred wallpaper outside the menu shape.
+
+This requires screen recording permission and private macOS compositing support.
+Reduce Transparency disables it; missing capture or compositor support restores
+the system background. The compositor has been exercised on macOS 15.5; other
+macOS versions and multiple displays still need validation. Background estimation
+may leave small color differences around text on complex wallpapers or highlighted
+menus. Ice does not modify the desktop wallpaper or system appearance preference.
 
 ![Menu Bar Appearance](https://github.com/user-attachments/assets/8c22c185-c3d2-49bb-971e-e1fc17df04b3)
 

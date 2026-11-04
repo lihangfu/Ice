@@ -86,11 +86,6 @@
 /* Menu bar appearance */
 "Menu Bar Appearance" = "菜单栏外观";
 "Done" = "完成";
-"Use dynamic appearance" = "使用动态外观";
-"Apply different settings based on the current system appearance" = "根据当前系统外观应用不同的设置";
-"Light Appearance" = "浅色外观";
-"Dark Appearance" = "深色外观";
-"Hold to Preview" = "按住预览";
 "Menu Bar Shape" = "菜单栏形状";
 "Use inset shape on screens with notch" = "在带刘海的屏幕上使用内缩形状";
 "Tip: you can also edit these settings by right-clicking in an empty area of the menu bar" = "提示：你也可以右键点击菜单栏空白处来编辑这些设置";
@@ -208,3 +203,31 @@
 "You may need to log out for the changes to take effect." = "你可能需要注销登录才能使更改生效。";
 "Due to a bug in the 0.10.0 release, the data for Ice's menu bar items was corrupted and their positions had to be reset." = "由于 0.10.0 版本中的一个问题，Ice 的菜单栏项目数据已损坏，现已重置其位置。";
 "Our sincerest apologies for the inconvenience." = "很抱歉给你带来不便。";
+
+/* Settings page introductions */
+"Manage how Ice starts and how your hidden menu bar items appear." = "设置 Ice 的启动方式，以及隐藏菜单栏项目的显示方式。";
+"Keep your menu bar organized by choosing where each item belongs." = "整理菜单栏项目，让常用项目触手可及。";
+"Personalize the look of your menu bar to match your Mac." = "调整菜单栏的颜色和形状，让外观与你的 Mac 更协调。";
+"Quickly access your menu bar items with keyboard shortcuts." = "使用快捷键，快速访问菜单栏项目和常用功能。";
+"Fine-tune menu bar behavior and manage Ice’s permissions." = "进一步调整菜单栏行为，并管理 Ice 的访问权限。";
+"A little more space for what matters." = "为重要的内容留出更多空间。";
+"Show hidden items" = "显示隐藏项目";
+"Updates are disabled in local builds." = "本地构建版本不检查或安装更新。";
+
+/* Permission setup */
+"Let Ice organize your menu bar" = "让 Ice 为你整理菜单栏";
+"Enable the required permission to get started." = "开启必要权限，即可开始使用。";
+"Read menu bar information and arrange items." = "读取菜单栏信息，并调整项目顺序。";
+"Display menu bar item images and customize appearance." = "显示菜单栏项目图像，并自定义外观。";
+"Required" = "必需";
+"Optional" = "可选";
+"Enabled" = "已开启";
+"Set Up…" = "设置权限…";
+"Open Settings…" = "打开设置…";
+"Get Started" = "开始使用";
+"You can use basic features without Screen Recording." = "暂不开启屏幕录制，也可以使用基础功能。";
+"You can change permissions in System Settings at any time." = "你可以随时在系统设置中更改权限。";
+
+"Background blur" = "背景模糊";
+"Blur the wallpaper behind menu bar text and icons. Zero restores the system background. Requires screen recording permission and Reduce Transparency to be off." = "模糊菜单栏文字和图标背后的壁纸。设为零可恢复系统背景。需要屏幕录制权限，并关闭“降低透明度”。";
+"Background blur is unavailable with Reduce Transparency or on this system." = "已开启“降低透明度”，或当前系统不支持背景模糊。";

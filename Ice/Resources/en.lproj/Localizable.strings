@@ -15,7 +15,6 @@
 "Always-Hidden" = "Always-Hidden";
 "Always-hidden section can be shown" = "Always-hidden section can be shown";
 "Apply" = "Apply";
-"Apply different settings based on the current system appearance" = "Apply different settings based on the current system appearance";
 "Apply system theme to icon" = "Apply system theme to icon";
 "Apply the current spacing" = "Apply the current spacing";
 "Applying this setting will relaunch all apps with menu bar items. Some apps may need to be manually relaunched." = "Applying this setting will relaunch all apps with menu bar items. Some apps may need to be manually relaunched.";
@@ -41,7 +40,6 @@
 "Contribute" = "Contribute";
 "Could not complete event operation for \"%@\"" = "Could not complete event operation for \"%@\"";
 "Custom" = "Custom";
-"Dark Appearance" = "Dark Appearance";
 "Display images of individual menu bar items." = "Display images of individual menu bar items.";
 "Display the icon as a monochrome image matching the system appearance" = "Display the icon as a monochrome image matching the system appearance";
 "Done" = "Done";
@@ -71,7 +69,6 @@
 "Hidden" = "Hidden";
 "Hide application menus when showing menu bar items" = "Hide application menus when showing menu bar items";
 "Hide the %@ Section" = "Hide the %@ Section";
-"Hold to Preview" = "Hold to Preview";
 "Hotkey is reserved by macOS" = "Hotkey is reserved by macOS";
 "Hotkeys" = "Hotkeys";
 "Hover over an empty area of the menu bar to show hidden menu bar items" = "Hover over an empty area of the menu bar to show hidden menu bar items";
@@ -93,7 +90,6 @@
 "Last checked: %@" = "Last checked: %@";
 "Launch at login" = "Launch at login";
 "Leading End Cap" = "Leading End Cap";
-"Light Appearance" = "Light Appearance";
 "Location" = "Location";
 "Make more room in the menu bar by hiding the left application menus if needed" = "Make more room in the menu bar by hiding the left application menus if needed";
 "Menu Bar Appearance" = "Menu Bar Appearance";
@@ -182,7 +178,6 @@
 "Type Hotkey" = "Type Hotkey";
 "Unable to display menu bar items" = "Unable to display menu bar items";
 "Use Ice Bar" = "Use Ice Bar";
-"Use dynamic appearance" = "Use dynamic appearance";
 "Use inset shape on screens with notch" = "Use inset shape on screens with notch";
 "Version %@" = "Version %@";
 "Version %@ is now available" = "Version %@ is now available";
@@ -194,3 +189,31 @@
 "macOS prohibits \"%@\" from being moved." = "macOS prohibits \"%@\" from being moved.";
 "max" = "max";
 "none" = "none";
+
+/* Settings page introductions */
+"Manage how Ice starts and how your hidden menu bar items appear." = "Manage how Ice starts and how your hidden menu bar items appear.";
+"Keep your menu bar organized by choosing where each item belongs." = "Keep your menu bar organized by choosing where each item belongs.";
+"Personalize the look of your menu bar to match your Mac." = "Personalize the look of your menu bar to match your Mac.";
+"Quickly access your menu bar items with keyboard shortcuts." = "Quickly access your menu bar items with keyboard shortcuts.";
+"Fine-tune menu bar behavior and manage Ice’s permissions." = "Fine-tune menu bar behavior and manage Ice’s permissions.";
+"A little more space for what matters." = "A little more space for what matters.";
+"Show hidden items" = "Show hidden items";
+"Updates are disabled in local builds." = "Updates are disabled in local builds.";
+
+/* Permission setup */
+"Let Ice organize your menu bar" = "Let Ice organize your menu bar";
+"Enable the required permission to get started." = "Enable the required permission to get started.";
+"Read menu bar information and arrange items." = "Read menu bar information and arrange items.";
+"Display menu bar item images and customize appearance." = "Display menu bar item images and customize appearance.";
+"Required" = "Required";
+"Optional" = "Optional";
+"Enabled" = "Enabled";
+"Set Up…" = "Set Up…";
+"Open Settings…" = "Open Settings…";
+"Get Started" = "Get Started";
+"You can use basic features without Screen Recording." = "You can use basic features without Screen Recording.";
+"You can change permissions in System Settings at any time." = "You can change permissions in System Settings at any time.";
+
+"Background blur" = "Background blur";
+"Blur the wallpaper behind menu bar text and icons. Zero restores the system background. Requires screen recording permission and Reduce Transparency to be off." = "Blur the wallpaper behind menu bar text and icons. Zero restores the system background. Requires screen recording permission and Reduce Transparency to be off.";
+"Background blur is unavailable with Reduce Transparency or on this system." = "Background blur is unavailable with Reduce Transparency or on this system.";

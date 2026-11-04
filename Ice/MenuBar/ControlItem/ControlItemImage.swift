@@ -30,7 +30,7 @@ enum ControlItemImage: Codable, Hashable {
             image?.isTemplate = true
             return image
         case .catalog(let name):
-            guard let originalImage = NSImage(named: name) else {
+            guard let originalImage = IceAssets.image(named: name) else {
                 return nil
             }
             let originalWidth = originalImage.size.width

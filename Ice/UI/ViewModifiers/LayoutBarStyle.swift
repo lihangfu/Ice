@@ -33,7 +33,7 @@ extension View {
                         )
                 }
             } else {
-                Color.defaultLayoutBar
+                IceAssets.defaultLayoutBarColor
             }
         }
         .overlay {

@@ -16,11 +16,11 @@ struct PermissionsWindow: Scene {
                     guard let window else {
                         return
                     }
+                    window.styleMask.remove([.closable, .miniaturizable])
                     appState.assignPermissionsWindow(window)
                 }
         }
         .windowResizability(.contentSize)
-        .windowStyle(.hiddenTitleBar)
         .environmentObject(appState.permissionsManager)
     }
 }

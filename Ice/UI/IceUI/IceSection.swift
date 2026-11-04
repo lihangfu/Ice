@@ -16,6 +16,8 @@ struct IceSectionOptions: OptionSet {
 }
 
 struct IceSection<Header: View, Content: View, Footer: View>: View {
+    @Environment(\.iceFormStyle) private var style
+
     private let header: Header
     private let content: Content
     private let footer: Footer
@@ -99,7 +101,7 @@ struct IceSection<Header: View, Content: View, Footer: View>: View {
 
     var body: some View {
         if isBordered {
-            IceGroupBox(padding: spacing) {
+            IceGroupBox(padding: style == .settings ? max(spacing, 14) : spacing) {
                 header
             } content: {
                 dividedContent
@@ -118,7 +120,7 @@ struct IceSection<Header: View, Content: View, Footer: View>: View {
     @ViewBuilder
     private var dividedContent: some View {
         if hasDividers {
-            _VariadicView.Tree(IceSectionLayout(spacing: spacing)) {
+            _VariadicView.Tree(IceSectionLayout(spacing: spacing, minimumRowHeight: style == .settings ? 22 : 0)) {
                 content
                     .frame(maxWidth: .infinity)
             }
@@ -131,6 +133,7 @@ struct IceSection<Header: View, Content: View, Footer: View>: View {
 
 private struct IceSectionLayout: _VariadicView_UnaryViewRoot {
     let spacing: CGFloat
+    let minimumRowHeight: CGFloat
 
     @ViewBuilder
     func body(children: _VariadicView.Children) -> some View {
@@ -138,6 +141,7 @@ private struct IceSectionLayout: _VariadicView_UnaryViewRoot {
         VStack(alignment: .leading, spacing: spacing) {
             ForEach(children) { child in
                 child
+                    .frame(minHeight: minimumRowHeight)
                 if child.id != last {
                     Divider()
                 }

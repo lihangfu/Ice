@@ -7,14 +7,17 @@ import CoreGraphics
 import Foundation
 
 struct MenuBarAppearanceConfigurationV2: Hashable {
-    var lightModeConfiguration: MenuBarAppearancePartialConfiguration
-    var darkModeConfiguration: MenuBarAppearancePartialConfiguration
     var staticConfiguration: MenuBarAppearancePartialConfiguration
     var shapeKind: MenuBarShapeKind
     var fullShapeInfo: MenuBarFullShapeInfo
     var splitShapeInfo: MenuBarSplitShapeInfo
     var isInset: Bool
-    var isDynamic: Bool
+    private var storedWallpaperBlurRadius: Double = 0
+
+    var wallpaperBlurRadius: Double {
+        get { storedWallpaperBlurRadius }
+        set { storedWallpaperBlurRadius = newValue.isFinite ? min(max(newValue, 0), 30) : 0 }
+    }
 
     var hasRoundedShape: Bool {
         switch shapeKind {
@@ -25,28 +28,18 @@ struct MenuBarAppearanceConfigurationV2: Hashable {
     }
 
     var current: MenuBarAppearancePartialConfiguration {
-        if isDynamic {
-            switch SystemAppearance.current {
-            case .light: lightModeConfiguration
-            case .dark: darkModeConfiguration
-            }
-        } else {
-            staticConfiguration
-        }
+        staticConfiguration
     }
 }
 
 // MARK: Default Configuration
 extension MenuBarAppearanceConfigurationV2 {
     static let defaultConfiguration = MenuBarAppearanceConfigurationV2(
-        lightModeConfiguration: .defaultConfiguration,
-        darkModeConfiguration: .defaultConfiguration,
         staticConfiguration: .defaultConfiguration,
         shapeKind: .none,
         fullShapeInfo: .default,
         splitShapeInfo: .default,
-        isInset: true,
-        isDynamic: false
+        isInset: true
     )
 }
 
@@ -60,32 +53,35 @@ extension MenuBarAppearanceConfigurationV2: Codable {
         case splitShapeInfo
         case isInset
         case isDynamic
+        case wallpaperBlurRadius
     }
 
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        // Preserve the active legacy appearance once; future system theme changes
+        // no longer select a different set of user customizations.
+        let isDynamic = try container.decodeIfPresent(Bool.self, forKey: .isDynamic) ?? false
+        let activeKey: CodingKeys = SystemAppearance.current == .dark ? .darkModeConfiguration : .lightModeConfiguration
+        let configurationKey: CodingKeys = isDynamic ? activeKey : .staticConfiguration
         try self.init(
-            lightModeConfiguration: container.decodeIfPresent(MenuBarAppearancePartialConfiguration.self, forKey: .lightModeConfiguration) ?? Self.defaultConfiguration.lightModeConfiguration,
-            darkModeConfiguration: container.decodeIfPresent(MenuBarAppearancePartialConfiguration.self, forKey: .darkModeConfiguration) ?? Self.defaultConfiguration.darkModeConfiguration,
-            staticConfiguration: container.decodeIfPresent(MenuBarAppearancePartialConfiguration.self, forKey: .staticConfiguration) ?? Self.defaultConfiguration.staticConfiguration,
+            staticConfiguration: container.decodeIfPresent(MenuBarAppearancePartialConfiguration.self, forKey: configurationKey) ?? .defaultConfiguration,
             shapeKind: container.decodeIfPresent(MenuBarShapeKind.self, forKey: .shapeKind) ?? Self.defaultConfiguration.shapeKind,
             fullShapeInfo: container.decodeIfPresent(MenuBarFullShapeInfo.self, forKey: .fullShapeInfo) ?? Self.defaultConfiguration.fullShapeInfo,
             splitShapeInfo: container.decodeIfPresent(MenuBarSplitShapeInfo.self, forKey: .splitShapeInfo) ?? Self.defaultConfiguration.splitShapeInfo,
-            isInset: container.decodeIfPresent(Bool.self, forKey: .isInset) ?? Self.defaultConfiguration.isInset,
-            isDynamic: container.decodeIfPresent(Bool.self, forKey: .isDynamic) ?? Self.defaultConfiguration.isDynamic
+            isInset: container.decodeIfPresent(Bool.self, forKey: .isInset) ?? Self.defaultConfiguration.isInset
         )
+        wallpaperBlurRadius = try container.decodeIfPresent(Double.self, forKey: .wallpaperBlurRadius) ?? 0
     }
 
     func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(lightModeConfiguration, forKey: .lightModeConfiguration)
-        try container.encode(darkModeConfiguration, forKey: .darkModeConfiguration)
         try container.encode(staticConfiguration, forKey: .staticConfiguration)
         try container.encode(shapeKind, forKey: .shapeKind)
         try container.encode(fullShapeInfo, forKey: .fullShapeInfo)
         try container.encode(splitShapeInfo, forKey: .splitShapeInfo)
         try container.encode(isInset, forKey: .isInset)
-        try container.encode(isDynamic, forKey: .isDynamic)
+        try container.encode(false, forKey: .isDynamic)
+        try container.encode(wallpaperBlurRadius, forKey: .wallpaperBlurRadius)
     }
 }
 

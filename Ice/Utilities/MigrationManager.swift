@@ -286,8 +286,6 @@ extension MigrationManager {
                     tintColor: oldConfiguration.tintColor,
                     tintGradient: oldConfiguration.tintGradient
                 )
-                configuration.lightModeConfiguration = partialConfiguration
-                configuration.darkModeConfiguration = partialConfiguration
                 configuration.staticConfiguration = partialConfiguration
                 configuration.shapeKind = oldConfiguration.shapeKind
                 configuration.fullShapeInfo = oldConfiguration.fullShapeInfo

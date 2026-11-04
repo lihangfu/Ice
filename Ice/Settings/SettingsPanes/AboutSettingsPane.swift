@@ -42,69 +42,51 @@ struct AboutSettingsPane: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            mainForm
-            Spacer(minLength: 20)
+        IceForm {
+            appIconAndCopyrightSection
+            updatesSection
             bottomBar
         }
-        .padding(30)
-    }
-
-    @ViewBuilder
-    private var mainForm: some View {
-        IceForm(padding: EdgeInsets(top: 5, leading: 30, bottom: 30, trailing: 30), spacing: 0) {
-            appIconAndCopyrightSection
-                .layoutPriority(1)
-
-            Spacer(minLength: 0)
-                .frame(maxHeight: 20)
-
-            updatesSection
-                .layoutPriority(1)
-        }
-        .scrollDisabled(true)
-        .frame(maxHeight: 500)
-        .background(.quinary, in: RoundedRectangle(cornerRadius: 20, style: .circular))
     }
 
     @ViewBuilder
     private var appIconAndCopyrightSection: some View {
-        IceSection(options: .plain) {
-            HStack(spacing: 10) {
+        IceGroupBox(padding: 24) {
+            VStack(spacing: 8) {
                 if let nsImage = NSImage(named: NSImage.applicationIconName) {
                     Image(nsImage: nsImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
-                        .frame(width: 225)
+                        .frame(width: 80, height: 80)
+                        .accessibilityHidden(true)
                 }
-
-                VStack(alignment: .leading) {
-                    Text("Ice")
-                        .font(.system(size: 72, weight: .medium))
-                        .foregroundStyle(.primary)
-
-                    Text("Version \(Constants.versionString)")
-                        .font(.system(size: 18))
-                        .foregroundStyle(.secondary)
-
-                    Text(Constants.copyrightString)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.tertiary)
-                }
+                Text("Ice")
+                    .font(.largeTitle.bold())
+                Text("Version \(Constants.versionString)")
+                    .foregroundStyle(.secondary)
+                Text(Constants.copyrightString)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
+            .frame(maxWidth: .infinity)
         }
     }
 
     @ViewBuilder
     private var updatesSection: some View {
-        IceSection(options: .hasDividers) {
+        IceSection {
             automaticallyCheckForUpdates
             automaticallyDownloadUpdates
             if updatesManager.canCheckForUpdates {
                 checkForUpdates
             }
         }
-        .frame(maxWidth: 600)
+        .disabled(Constants.isLocalBuild)
+        .annotation {
+            if Constants.isLocalBuild {
+                Text("Updates are disabled in local builds.")
+            }
+        }
     }
 
     @ViewBuilder
@@ -137,50 +119,30 @@ struct AboutSettingsPane: View {
 
     @ViewBuilder
     private var bottomBar: some View {
-        HStack {
-            Button("Quit Ice") {
-                NSApp.terminate(nil)
+        IceSection {
+            HStack {
+                Button("Acknowledgements") {
+                    NSWorkspace.shared.open(acknowledgementsURL)
+                }
+                Spacer()
+                Button("Contribute") {
+                    openURL(contributeURL)
+                }
+                Button("Report a Bug") {
+                    openURL(issuesURL)
+                }
             }
-            Spacer()
-            Button("Acknowledgements") {
-                NSWorkspace.shared.open(acknowledgementsURL)
-            }
-            Button("Contribute") {
-                openURL(contributeURL)
-            }
-            Button("Report a Bug") {
-                openURL(issuesURL)
-            }
-            Button("Support Ice", systemImage: "heart.circle.fill") {
-                openURL(donateURL)
+            .buttonStyle(.link)
+            HStack {
+                Button("Support Ice", systemImage: "heart") {
+                    openURL(donateURL)
+                }
+                .buttonStyle(.link)
+                Spacer()
+                Button("Quit Ice") {
+                    NSApp.terminate(nil)
+                }
             }
         }
-        .padding(8)
-        .buttonStyle(BottomBarButtonStyle())
-        .background(.quinary, in: Capsule(style: .circular))
-        .frame(height: 40)
-    }
-}
-
-private struct BottomBarButtonStyle: ButtonStyle {
-    @State private var isHovering = false
-
-    private var borderShape: some InsettableShape {
-        Capsule(style: .circular)
-    }
-
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background {
-                borderShape
-                    .fill(configuration.isPressed ? .tertiary : .quaternary)
-                    .opacity(isHovering ? 1 : 0)
-            }
-            .contentShape([.focusEffect, .interaction], borderShape)
-            .onHover { hovering in
-                isHovering = hovering
-            }
     }
 }

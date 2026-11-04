@@ -9,188 +9,165 @@ struct PermissionsView: View {
     @EnvironmentObject var permissionsManager: PermissionsManager
     @Environment(\.openWindow) private var openWindow
 
-    private var continueButtonText: LocalizedStringKey {
-        if case .hasRequiredPermissions = permissionsManager.permissionsState {
-            "Continue in Limited Mode"
-        } else {
-            "Continue"
-        }
-    }
-
-    private var continueButtonForegroundStyle: some ShapeStyle {
-        if case .hasRequiredPermissions = permissionsManager.permissionsState {
-            AnyShapeStyle(.yellow)
-        } else {
-            AnyShapeStyle(.primary)
-        }
-    }
-
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: 24) {
             headerView
-                .padding(.vertical)
+                .padding(.bottom, 4)
 
-            explanationView
-            permissionsGroupStack
-
-            footerView
-                .padding(.vertical)
-        }
-        .padding(.horizontal)
-        .fixedSize()
-        .readWindow { window in
-            guard let window else {
-                return
-            }
-            window.styleMask.remove([.closable, .miniaturizable])
-            if let contentView = window.contentView {
-                with(contentView.safeAreaInsets) { insets in
-                    insets.bottom = -insets.bottom
-                    insets.left = -insets.left
-                    insets.right = -insets.right
-                    insets.top = -insets.top
-                    contentView.additionalSafeAreaInsets = insets
+            IceGroupBox(padding: 0) {
+                VStack(spacing: 0) {
+                    PermissionRow(
+                        permission: permissionsManager.accessibilityPermission,
+                        symbol: "accessibility",
+                        summary: "Read menu bar information and arrange items.",
+                        requestTitle: "Set Up…",
+                        onGranted: returnToPermissions
+                    )
+                    Divider()
+                        .padding(.horizontal, 20)
+                    PermissionRow(
+                        permission: permissionsManager.screenRecordingPermission,
+                        symbol: "display",
+                        summary: "Display menu bar item images and customize appearance.",
+                        requestTitle: "Open Settings…",
+                        onGranted: returnToPermissions
+                    )
                 }
             }
+
+            VStack(alignment: .leading, spacing: 12) {
+                Label("You can use basic features without Screen Recording.", systemImage: "info.circle")
+                Label("You can change permissions in System Settings at any time.", systemImage: "lock")
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+            footerView
+                .padding(.top, 4)
         }
+        .padding(32)
+        .frame(width: 620)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .environment(\.iceFormStyle, .settings)
     }
 
-    @ViewBuilder
     private var headerView: some View {
-        Label {
-            Text("Permissions")
-                .font(.system(size: 36))
-        } icon: {
+        HStack(spacing: 16) {
             if let nsImage = NSImage(named: NSImage.applicationIconName) {
                 Image(nsImage: nsImage)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 75, height: 75)
+                    .frame(width: 56, height: 56)
+                    .accessibilityHidden(true)
             }
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Let Ice organize your menu bar")
+                    .font(.system(size: 23, weight: .semibold))
+                    .accessibilityAddTraits(.isHeader)
+                Text("Enable the required permission to get started.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    @ViewBuilder
-    private var explanationView: some View {
-        IceSection {
-            VStack {
-                Text("Ice needs permission to manage the menu bar.")
-                Text("Absolutely no personal information is collected or stored.")
-                    .bold()
-                    .foregroundStyle(.red)
-            }
-            .padding()
-        }
-        .font(.title3)
-        .padding(.bottom, 10)
-    }
-
-    @ViewBuilder
-    private var permissionsGroupStack: some View {
-        VStack(spacing: 7.5) {
-            ForEach(permissionsManager.allPermissions) { permission in
-                permissionBox(permission)
-            }
-        }
-    }
-
-    @ViewBuilder
     private var footerView: some View {
         HStack {
-            quitButton
-            continueButton
-        }
-        .controlSize(.large)
-    }
-
-    @ViewBuilder
-    private var quitButton: some View {
-        Button {
-            NSApp.terminate(nil)
-        } label: {
-            Text("Quit")
-                .frame(maxWidth: .infinity)
-        }
-    }
-
-    @ViewBuilder
-    private var continueButton: some View {
-        Button {
-            guard let appState = permissionsManager.appState else {
-                return
+            Button("Quit Ice") {
+                NSApp.terminate(nil)
             }
-            appState.performSetup()
-            appState.permissionsWindow?.close()
-            appState.appDelegate?.openSettingsWindow()
-        } label: {
-            Text(continueButtonText)
-                .frame(maxWidth: .infinity)
-                .foregroundStyle(continueButtonForegroundStyle)
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 6)
+
+            Spacer()
+
+            Button("Get Started") {
+                guard let appState = permissionsManager.appState else {
+                    return
+                }
+                appState.performSetup()
+                appState.permissionsWindow?.close()
+                appState.appDelegate?.openSettingsWindow()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .keyboardShortcut(.defaultAction)
+            .disabled(permissionsManager.permissionsState == .missingPermissions)
         }
-        .disabled(permissionsManager.permissionsState == .missingPermissions)
     }
 
-    @ViewBuilder
-    private func permissionBox(_ permission: Permission) -> some View {
-        IceSection {
-            VStack(spacing: 10) {
-                Text(LocalizedStringKey(permission.title))
-                    .font(.title)
-                    .underline()
+    private func returnToPermissions() {
+        permissionsManager.appState?.activate(withPolicy: .regular)
+        openWindow(id: Constants.permissionsWindowID)
+    }
+}
 
-                VStack(spacing: 0) {
-                    Text("Ice needs this to:")
-                        .font(.title3)
-                        .bold()
+private struct PermissionRow: View {
+    @ObservedObject var permission: Permission
+    @State private var isRequesting = false
 
-                    VStack(alignment: .leading) {
-                        ForEach(permission.details, id: \.self) { detail in
-                            HStack {
-                                Text("•").bold()
-                                Text(LocalizedStringKey(detail))
-                            }
-                        }
-                    }
+    let symbol: String
+    let summary: LocalizedStringKey
+    let requestTitle: LocalizedStringKey
+    let onGranted: () -> Void
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 24, weight: .regular))
+                .foregroundStyle(.secondary)
+                .frame(width: 40, height: 40)
+                .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 10) {
+                    Text(LocalizedStringKey(permission.title))
+                        .font(.system(size: 15, weight: .medium))
+                    Text(permission.isRequired ? LocalizedStringKey("Required") : LocalizedStringKey("Optional"))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
                 }
+                Text(summary)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-                Button {
-                    guard let appState = permissionsManager.appState else {
-                        return
-                    }
-                    permission.performRequest()
-                    Task {
-                        await permission.waitForPermission()
-                        appState.activate(withPolicy: .regular)
-                        openWindow(id: Constants.permissionsWindowID)
-                    }
-                } label: {
-                    if permission.hasPermission {
-                        Text("Permission Granted")
+            Group {
+                if permission.hasPermission {
+                    Label {
+                        Text("Enabled")
+                            .foregroundStyle(.secondary)
+                    } icon: {
+                        Image(systemName: "checkmark.circle.fill")
                             .foregroundStyle(.green)
-                    } else {
-                        Text("Grant Permission")
                     }
-                }
-                .allowsHitTesting(!permission.hasPermission)
-
-                if !permission.isRequired {
-                    IceGroupBox {
-                        AnnotationView(
-                            alignment: .center,
-                            font: .callout.bold()
-                        ) {
-                            Label {
-                                Text("Ice can work in a limited mode without this permission.")
-                            } icon: {
-                                Image(systemName: "checkmark.shield")
-                                    .foregroundStyle(.green)
-                            }
-                        }
+                } else {
+                    Button(requestTitle) {
+                        isRequesting = true
+                        permission.performRequest()
                     }
+                    .controlSize(.regular)
+                    .accessibilityHint(Text(LocalizedStringKey(permission.title)))
                 }
             }
-            .padding(10)
-            .frame(maxWidth: .infinity)
+            .frame(minWidth: 100, alignment: .trailing)
+        }
+        .padding(20)
+        .onChange(of: permission.hasPermission) { _, granted in
+            if granted && isRequesting {
+                isRequesting = false
+                onGranted()
+            }
+        }
+        .onDisappear {
+            isRequesting = false
         }
     }
 }

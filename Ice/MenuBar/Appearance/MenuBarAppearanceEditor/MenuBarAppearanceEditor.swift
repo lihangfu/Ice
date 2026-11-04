@@ -14,6 +14,8 @@ struct MenuBarAppearanceEditor: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var appearanceManager: MenuBarAppearanceManager
 
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     let location: Location
 
     private var mainFormPadding: EdgeInsets {
@@ -59,15 +61,29 @@ struct MenuBarAppearanceEditor: View {
     @ViewBuilder
     private var mainForm: some View {
         IceForm(padding: mainFormPadding) {
+            if case .settings = location {
+                SettingsPageHeader(identifier: .menuBarAppearance)
+            }
             IceSection {
-                isDynamicToggle
+                IceLabeledContent("Background blur") {
+                    HStack {
+                        Slider(value: appearanceManager.bindings.configuration.wallpaperBlurRadius, in: 0...30)
+                            .accessibilityLabel(Text("Background blur"))
+                        Text("\(Int((appearanceManager.configuration.wallpaperBlurRadius / 30 * 100).rounded()))%")
+                            .monospacedDigit()
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                    .frame(width: 220)
+                    .disabled(reduceTransparency || !MenuBarWallpaperBlurView.isSupported)
+                }
+                .settingHelp("Blur the wallpaper behind menu bar text and icons. Zero restores the system background. Requires screen recording permission and Reduce Transparency to be off.")
+                if reduceTransparency || !MenuBarWallpaperBlurView.isSupported {
+                    Text("Background blur is unavailable with Reduce Transparency or on this system.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             }
-            if appearanceManager.configuration.isDynamic {
-                LabeledPartialEditor(appearance: .light)
-                LabeledPartialEditor(appearance: .dark)
-            } else {
-                StaticPartialEditor()
-            }
+            UnlabeledPartialEditor(configuration: appearanceManager.bindings.configuration.staticConfiguration)
             IceSection("Menu Bar Shape") {
                 shapePicker
                 isInset
@@ -97,12 +113,6 @@ struct MenuBarAppearanceEditor: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
             }
         }
-    }
-
-    @ViewBuilder
-    private var isDynamicToggle: some View {
-        Toggle("Use dynamic appearance", isOn: appearanceManager.bindings.configuration.isDynamic)
-            .annotation("Apply different settings based on the current system appearance")
     }
 
     @ViewBuilder
@@ -212,115 +222,5 @@ private struct UnlabeledPartialEditor: View {
                 Text("3").tag(3.0)
             }
         }
-    }
-}
-
-private struct LabeledPartialEditor: View {
-    @EnvironmentObject var appearanceManager: MenuBarAppearanceManager
-    @State private var currentAppearance = SystemAppearance.current
-    @State private var textFrame = CGRect.zero
-
-    let appearance: SystemAppearance
-
-    var body: some View {
-        IceSection(options: .plain) {
-            labelStack
-        } content: {
-            partialEditor
-        }
-        .onReceive(NSApp.publisher(for: \.effectiveAppearance)) { _ in
-            currentAppearance = .current
-        }
-    }
-
-    @ViewBuilder
-    private var labelStack: some View {
-        HStack {
-            Text(appearance.titleKey)
-                .font(.headline)
-                .onFrameChange(update: $textFrame)
-
-            if currentAppearance != appearance {
-                previewButton
-            }
-        }
-        .frame(height: textFrame.height)
-    }
-
-    @ViewBuilder
-    private var previewButton: some View {
-        switch appearance {
-        case .light:
-            PreviewButton(configuration: appearanceManager.configuration.lightModeConfiguration)
-        case .dark:
-            PreviewButton(configuration: appearanceManager.configuration.darkModeConfiguration)
-        }
-    }
-
-    @ViewBuilder
-    private var partialEditor: some View {
-        switch appearance {
-        case .light:
-            UnlabeledPartialEditor(configuration: appearanceManager.bindings.configuration.lightModeConfiguration)
-        case .dark:
-            UnlabeledPartialEditor(configuration: appearanceManager.bindings.configuration.darkModeConfiguration)
-        }
-    }
-}
-
-private struct StaticPartialEditor: View {
-    @EnvironmentObject var appearanceManager: MenuBarAppearanceManager
-
-    var body: some View {
-        UnlabeledPartialEditor(configuration: appearanceManager.bindings.configuration.staticConfiguration)
-    }
-}
-
-private struct PreviewButton: View {
-    private struct DummyButton: NSViewRepresentable {
-        @Binding var isPressed: Bool
-
-        func makeNSView(context: Context) -> NSButton {
-            let button = NSButton()
-            button.title = ""
-            button.bezelStyle = .accessoryBarAction
-            return button
-        }
-
-        func updateNSView(_ nsView: NSButton, context: Context) {
-            nsView.isHighlighted = isPressed
-        }
-    }
-
-    @EnvironmentObject var appearanceManager: MenuBarAppearanceManager
-
-    @State private var frame = CGRect.zero
-    @State private var isPressed = false
-
-    let configuration: MenuBarAppearancePartialConfiguration
-
-    var body: some View {
-        ZStack {
-            DummyButton(isPressed: $isPressed)
-                .allowsHitTesting(false)
-            Text("Hold to Preview")
-                .baselineOffset(1.5)
-                .padding(.horizontal, 10)
-                .contentShape(Rectangle())
-        }
-        .fixedSize()
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 0)
-                .onChanged { value in
-                    isPressed = frame.contains(value.location)
-                }
-                .onEnded { _ in
-                    isPressed = false
-                }
-        )
-        .onChange(of: isPressed) { _, newValue in
-            appearanceManager.previewConfiguration = newValue ? configuration : nil
-        }
-        .onFrameChange(update: $frame)
     }
 }

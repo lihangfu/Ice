@@ -32,6 +32,7 @@ final class IceBarPanel: NSPanel {
         self.isFloatingPanel = true
         self.animationBehavior = .none
         self.backgroundColor = .clear
+        self.isOpaque = false
         self.hasShadow = false
         self.level = .mainMenu + 1
         self.collectionBehavior = [.fullScreenAuxiliary, .ignoresCycle, .moveToActiveSpace]
@@ -233,6 +234,7 @@ private final class IceBarHostingView: NSHostingView<AnyView> {
 // MARK: - IceBarContentView
 
 private struct IceBarContentView: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var colorManager: IceBarColorManager
     @EnvironmentObject var itemManager: MenuBarItemManager
@@ -283,14 +285,42 @@ private struct IceBarContentView: View {
         configuration.current.hasShadow ? 0.5 : 0.33
     }
 
+    private var backgroundColorScheme: ColorScheme? {
+        (colorManager.colorInfo?.color.brightness).map { $0 > 0.67 ? .light : .dark }
+    }
+
+    private var background: some View {
+        ZStack {
+            if reduceTransparency {
+                Color(nsColor: .windowBackgroundColor)
+            } else {
+                VisualEffectView(material: .popover, blendingMode: .behindWindow)
+            }
+
+            if !appState.isActiveSpaceFullscreen {
+                switch configuration.current.tintKind {
+                case .none:
+                    EmptyView()
+                case .solid:
+                    Color(cgColor: configuration.current.tintColor)
+                        .opacity(0.2)
+                case .gradient:
+                    configuration.current.tintGradient
+                        .opacity(0.2)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
     var body: some View {
         ZStack {
             content
                 .frame(height: contentHeight)
                 .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, verticalPadding)
-                .layoutBarStyle(appState: appState, averageColorInfo: colorManager.colorInfo)
-                .foregroundStyle(colorManager.colorInfo?.color.brightness ?? 0 > 0.67 ? .black : .white)
+                .background(background)
+                .foregroundStyle(.primary)
                 .clipShape(clipShape)
                 .shadow(color: .black.opacity(shadowOpacity), radius: 2.5)
 
@@ -305,6 +335,8 @@ private struct IceBarContentView: View {
         .frame(maxWidth: imageCache.screen?.frame.width)
         .fixedSize()
         .onFrameChange(update: $frame)
+        // Captured menu bar icons retain their original light or dark pixels.
+        .preferredColorScheme(backgroundColorScheme)
     }
 
     @ViewBuilder

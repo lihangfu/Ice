@@ -12,9 +12,6 @@ final class MenuBarAppearanceManager: ObservableObject {
     /// The current menu bar appearance configuration.
     @Published var configuration: MenuBarAppearanceConfigurationV2 = .defaultConfiguration
 
-    /// The currently previewed partial configuration.
-    @Published var previewConfiguration: MenuBarAppearancePartialConfiguration?
-
     /// The shared app state.
     private weak var appState: AppState?
 
@@ -95,7 +92,7 @@ final class MenuBarAppearanceManager: ObservableObject {
                 }
                 // The overlay panels may not have been configured yet. Since some of the
                 // properties on the manager might call for them, try to configure now.
-                if overlayPanels.isEmpty {
+                if overlayPanels.isEmpty || !needsOverlayPanels(for: configuration) {
                     configureOverlayPanels(with: configuration)
                 }
             }
@@ -107,6 +104,9 @@ final class MenuBarAppearanceManager: ObservableObject {
     /// Returns a Boolean value that indicates whether a set of overlay panels
     /// is needed for the given configuration.
     private func needsOverlayPanels(for configuration: MenuBarAppearanceConfigurationV2) -> Bool {
+        if configuration.wallpaperBlurRadius > 0 {
+            return true
+        }
         let current = configuration.current
         if current.hasShadow {
             return true
