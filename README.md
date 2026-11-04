@@ -79,24 +79,12 @@ metadata, signature and relocation, and checks that missing resources fail.
 It also checks legacy appearance migration. It does not exercise menu bar
 manipulation or grant macOS permissions. To render the actual appearance editor
 and general settings pane in both system themes without changing saved settings
-(including small, medium, and large sidebar sizes):
+(including small, medium, and large sidebar sizes), and verify that the real
+Ice Bar material follows light/dark appearance changes on the same panel:
 
 ```sh
 build/Ice.app/Contents/MacOS/Ice --validate-appearance build/appearance-validation
 ```
-
-To exercise wallpaper processing and live menu bar composition without saving
-settings (temporarily changes the visible menu bar background):
-
-```sh
-build/Ice.app/Contents/MacOS/Ice --validate-wallpaper-blur build/wallpaper-blur-validation
-```
-
-This checks fractional persistence, invalid input, blur texture reduction,
-black/white foreground pixels, clipping and restoration, and saves screenshots.
-It requires screen capture access. Without Accessibility authorization it calls
-the production capture/drawing path directly and reports that menu discovery,
-actual split geometry and menu interaction remain unverified.
 
 ## Releasing this fork
 
@@ -248,19 +236,10 @@ appearances. When upgrading from dynamic appearance settings, Ice preserves
 the configuration active at the first launch and uses it for subsequent launches.
 The separate light/dark editors and preview controls are no longer available.
 
-The **Background blur** slider continuously adjusts a blurred wallpaper crop
-behind the system menu bar text and icons (0–100%, mapping to a 0–30 point
-radius). Zero restores the original system background; it does not remove the
-system's own blur. The wallpaper is sampled every five seconds and after space
-or appearance changes, so animated wallpaper is not reproduced frame by frame.
-Rounded and split shapes keep the unblurred wallpaper outside the menu shape.
-
-This requires screen recording permission and private macOS compositing support.
-Reduce Transparency disables it; missing capture or compositor support restores
-the system background. The compositor has been exercised on macOS 15.5; other
-macOS versions and multiple displays still need validation. Background estimation
-may leave small color differences around text on complex wallpapers or highlighted
-menus. Ice does not modify the desktop wallpaper or system appearance preference.
+Menu bar background blur customization is no longer provided. Existing blur
+strength settings are ignored and omitted when appearance settings are saved.
+Tint, shadow, border and shape settings remain available. Ice Bar continues to
+use its native frosted background, following the system light/dark appearance.
 
 ![Menu Bar Appearance](https://github.com/user-attachments/assets/8c22c185-c3d2-49bb-971e-e1fc17df04b3)
 

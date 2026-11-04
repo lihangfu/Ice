@@ -10,7 +10,7 @@ Ice Bar（弹出栏）原先用菜单栏平均颜色填充背景，不能呈现�
 
 仅在弹出栏背景复用 `VisualEffectView`，使用 `NSVisualEffectView`（原生视觉效果视图）的 `popover` 材质与 `behindWindow`（窗口后方混合）模式。窗口显式设为非不透明；原有圆角裁剪、阴影、边框和非全屏染色继续适用，染色放在图标下方。
 
-材质明暗跟随菜单栏采样亮度，以配合不可重新着色的截图图标；无采样时跟随系统外观。开启“降低透明度”时以系统窗口底色替代材质。该选择独立于[设置窗口外观](2026-11-04-macos-settings-appearance.md)，不改变设置布局分区。
+最初选择按菜单栏采样亮度决定材质明暗，以配合不可重新着色的截图图标；该明暗策略已由[跟随系统外观](../bug-fix/2026-11-04-ice-bar-system-appearance.md)取代。开启“降低透明度”时以系统窗口底色替代材质。背景模糊独立于[设置窗口外观](2026-11-04-macos-settings-appearance.md)，不改变设置布局分区。
 
 ## Alternatives considered
 

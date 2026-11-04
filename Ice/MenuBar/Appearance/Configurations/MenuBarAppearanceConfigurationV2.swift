@@ -12,12 +12,6 @@ struct MenuBarAppearanceConfigurationV2: Hashable {
     var fullShapeInfo: MenuBarFullShapeInfo
     var splitShapeInfo: MenuBarSplitShapeInfo
     var isInset: Bool
-    private var storedWallpaperBlurRadius: Double = 0
-
-    var wallpaperBlurRadius: Double {
-        get { storedWallpaperBlurRadius }
-        set { storedWallpaperBlurRadius = newValue.isFinite ? min(max(newValue, 0), 30) : 0 }
-    }
 
     var hasRoundedShape: Bool {
         switch shapeKind {
@@ -53,7 +47,6 @@ extension MenuBarAppearanceConfigurationV2: Codable {
         case splitShapeInfo
         case isInset
         case isDynamic
-        case wallpaperBlurRadius
     }
 
     init(from decoder: any Decoder) throws {
@@ -70,7 +63,6 @@ extension MenuBarAppearanceConfigurationV2: Codable {
             splitShapeInfo: container.decodeIfPresent(MenuBarSplitShapeInfo.self, forKey: .splitShapeInfo) ?? Self.defaultConfiguration.splitShapeInfo,
             isInset: container.decodeIfPresent(Bool.self, forKey: .isInset) ?? Self.defaultConfiguration.isInset
         )
-        wallpaperBlurRadius = try container.decodeIfPresent(Double.self, forKey: .wallpaperBlurRadius) ?? 0
     }
 
     func encode(to encoder: any Encoder) throws {
@@ -81,7 +73,6 @@ extension MenuBarAppearanceConfigurationV2: Codable {
         try container.encode(splitShapeInfo, forKey: .splitShapeInfo)
         try container.encode(isInset, forKey: .isInset)
         try container.encode(false, forKey: .isDynamic)
-        try container.encode(wallpaperBlurRadius, forKey: .wallpaperBlurRadius)
     }
 }
 

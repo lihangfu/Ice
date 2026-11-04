@@ -66,9 +66,6 @@ final class MenuBarOverlayPanel: NSPanel {
     /// The current desktop wallpaper, clipped to the bounds of the menu bar.
     @Published private(set) var desktopWallpaper: CGImage?
 
-    @Published private(set) var wallpaperBlurSource: MenuBarWallpaperBlurSource?
-    let wallpaperBlurView = MenuBarWallpaperBlurView(frame: .zero)
-
     /// Storage for internal observers.
     private var cancellables = Set<AnyCancellable>()
 
@@ -98,13 +95,7 @@ final class MenuBarOverlayPanel: NSPanel {
         self.ignoresMouseEvents = true
         self.collectionBehavior = [.fullScreenNone, .ignoresCycle, .moveToActiveSpace]
         self.isOpaque = false
-        let root = NSView()
-        let drawing = MenuBarOverlayPanelContentView()
-        wallpaperBlurView.autoresizingMask = [.width, .height]
-        drawing.autoresizingMask = [.width, .height]
-        root.addSubview(wallpaperBlurView)
-        root.addSubview(drawing)
-        self.contentView = root
+        self.contentView = MenuBarOverlayPanelContentView()
         configureCancellables()
     }
 
@@ -239,46 +230,17 @@ final class MenuBarOverlayPanel: NSPanel {
                 }
                 let windows = WindowInfo.getOnScreenWindows()
                 guard let owningDisplay = self.validate(for: .updates, with: windows) else {
-                    self.wallpaperBlurSource = nil
-                    self.wallpaperBlurView.suspend()
                     return
                 }
                 performUpdates(for: flags, windows: windows, display: owningDisplay)
             }
             .store(in: &c)
 
-        NSWorkspace.shared.notificationCenter
-            .publisher(for: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in
-                self?.wallpaperBlurView.suspend()
-                self?.requestWallpaperUpdate()
-            }
-            .store(in: &c)
-
         if let appState {
-            appState.appearanceManager.$configuration
-                .map { $0.wallpaperBlurRadius > 0 }
-                .removeDuplicates()
-                .receive(on: DispatchQueue.main)
-                .sink { [weak self] enabled in
-                    guard let self else { return }
-                    if enabled {
-                        requestWallpaperUpdate()
-                    } else {
-                        wallpaperBlurSource = nil
-                        wallpaperBlurView.suspend()
-                    }
-                }
-                .store(in: &c)
             appState.menuBarManager.$isMenuBarHiddenBySystem
                 .sink { [weak self] isHidden in
                     guard let self else { return }
                     alphaValue = isHidden ? 0 : 1
-                    if isHidden {
-                        wallpaperBlurView.suspend()
-                        wallpaperBlurSource = nil
-                    }
                 }
                 .store(in: &c)
         }
@@ -286,19 +248,7 @@ final class MenuBarOverlayPanel: NSPanel {
         cancellables = c
     }
 
-    func requestWallpaperUpdate() {
-        insertUpdateFlag(.desktopWallpaper)
-    }
-
-    override func orderOut(_ sender: Any?) {
-        wallpaperBlurView.suspend()
-        wallpaperBlurSource = nil
-        super.orderOut(sender)
-    }
-
     override func close() {
-        wallpaperBlurView.suspend()
-        wallpaperBlurSource = nil
         cancellables.removeAll()
         for flag in [UpdateFlag.applicationMenuFrame, .desktopWallpaper] {
             updateTaskContext.cancelTask(for: flag)
@@ -351,13 +301,11 @@ final class MenuBarOverlayPanel: NSPanel {
 
     /// Stores the area of the desktop wallpaper that is under the menu bar
     /// of the given display.
-    func updateDesktopWallpaper(for display: CGDirectDisplayID, with windows: [WindowInfo]) {
+    private func updateDesktopWallpaper(for display: CGDirectDisplayID, with windows: [WindowInfo]) {
         guard
             let wallpaperWindow = WindowInfo.getWallpaperWindow(from: windows, for: display),
             let menuBarWindow = WindowInfo.getMenuBarWindow(from: windows, for: display)
         else {
-            wallpaperBlurSource = nil
-            wallpaperBlurView.suspend()
             return
         }
         let menuFrame = menuBarWindow.frame
@@ -365,41 +313,6 @@ final class MenuBarOverlayPanel: NSPanel {
         if desktopWallpaper?.dataProvider?.data != wallpaper?.dataProvider?.data {
             desktopWallpaper = wallpaper
         }
-        guard
-            isVisible,
-            appState?.menuBarManager.isMenuBarHiddenBySystem != true,
-            (appState?.appearanceManager.configuration.wallpaperBlurRadius ?? 0) > 0,
-            MenuBarWallpaperBlurView.isSupported,
-            !NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
-        else {
-            wallpaperBlurSource = nil
-            wallpaperBlurView.suspend()
-            return
-        }
-        // Sample three maximum blur radii beyond the strip before cropping to avoid
-        // stretching the strip's bottom edge into the blurred wallpaper.
-        let captureRect = menuFrame.insetBy(dx: 0, dy: -90).intersection(CGDisplayBounds(display))
-        guard
-            !captureRect.isEmpty,
-            let paddedWallpaper = ScreenCapture.captureWindow(wallpaperWindow.windowID, screenBounds: captureRect),
-            let nativeMenu = ScreenCapture.captureWindow(menuBarWindow.windowID, screenBounds: menuFrame)
-        else {
-            wallpaperBlurSource = nil
-            wallpaperBlurView.suspend()
-            return
-        }
-        let scale = CGFloat(paddedWallpaper.width) / captureRect.width
-        wallpaperBlurSource = MenuBarWallpaperBlurSource(
-            wallpaper: paddedWallpaper,
-            menuBar: nativeMenu,
-            crop: CGRect(
-                x: (menuFrame.minX - captureRect.minX) * scale,
-                y: (captureRect.maxY - menuFrame.maxY) * scale,
-                width: menuFrame.width * scale,
-                height: menuFrame.height * scale
-            ),
-            scale: scale
-        )
     }
 
     /// Updates the panel to prepare for display.
@@ -519,7 +432,6 @@ private final class MenuBarOverlayPanelContentView: NSView {
                 .removeDuplicates()
                 .sink { [weak self] isDragging in
                     if isDragging {
-                        self?.overlayPanel?.wallpaperBlurView.suspend()
                         self?.animator().alphaValue = 0
                     } else {
                         self?.animator().alphaValue = 1
@@ -532,9 +444,6 @@ private final class MenuBarOverlayPanelContentView: NSView {
                 .sink { [weak self] _ in
                     self?.needsDisplay = true
                 }
-                .store(in: &c)
-            overlayPanel.$wallpaperBlurSource
-                .sink { [weak self] _ in self?.needsDisplay = true }
                 .store(in: &c)
             // Redraw whenever the desktop wallpaper changes.
             overlayPanel.$desktopWallpaper
@@ -766,23 +675,6 @@ private final class MenuBarOverlayPanelContentView: NSView {
                 isInset: fullConfiguration.isInset,
                 screen: overlayPanel.owningScreen
             )
-        }
-
-        let blurView = overlayPanel.wallpaperBlurView
-        blurView.frame = drawableBounds
-        var transform = CGAffineTransform(translationX: -drawableBounds.minX, y: -drawableBounds.minY)
-        if
-            let clip = shapePath.cgPath.copy(using: &transform), overlayPanel.isVisible,
-            overlayPanel.appState?.menuBarManager.isMenuBarHiddenBySystem != true,
-            !overlayPanel.isDraggingMenuBarItem
-        {
-            blurView.update(
-                source: overlayPanel.wallpaperBlurSource,
-                radius: fullConfiguration.wallpaperBlurRadius,
-                shape: clip
-            )
-        } else {
-            blurView.suspend()
         }
 
         var hasBorder = false

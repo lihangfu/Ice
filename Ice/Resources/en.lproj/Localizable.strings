@@ -202,7 +202,3 @@
 "Get Started" = "Get Started";
 "You can use basic features without Screen Recording." = "You can use basic features without Screen Recording.";
 "You can change permissions in System Settings at any time." = "You can change permissions in System Settings at any time.";
-
-"Background blur" = "Background blur";
-"Blur the wallpaper behind menu bar text and icons. Zero restores the system background. Requires screen recording permission and Reduce Transparency to be off." = "Blur the wallpaper behind menu bar text and icons. Zero restores the system background. Requires screen recording permission and Reduce Transparency to be off.";
-"Background blur is unavailable with Reduce Transparency or on this system." = "Background blur is unavailable with Reduce Transparency or on this system.";

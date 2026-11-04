@@ -104,9 +104,6 @@ final class MenuBarAppearanceManager: ObservableObject {
     /// Returns a Boolean value that indicates whether a set of overlay panels
     /// is needed for the given configuration.
     private func needsOverlayPanels(for configuration: MenuBarAppearanceConfigurationV2) -> Bool {
-        if configuration.wallpaperBlurRadius > 0 {
-            return true
-        }
         let current = configuration.current
         if current.hasShadow {
             return true

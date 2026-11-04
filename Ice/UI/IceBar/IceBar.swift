@@ -13,8 +13,6 @@ final class IceBarPanel: NSPanel {
 
     private(set) var currentSection: MenuBarSection.Name?
 
-    private lazy var colorManager = IceBarColorManager(iceBarPanel: self)
-
     private var cancellables = Set<AnyCancellable>()
 
     init(appState: AppState) {
@@ -167,17 +165,11 @@ final class IceBarPanel: NSPanel {
             await appState.imageCache.updateCache()
         }
 
-        contentView = IceBarHostingView(appState: appState, colorManager: colorManager, screen: screen, section: section) { [weak self] in
+        contentView = IceBarHostingView(appState: appState, screen: screen, section: section) { [weak self] in
             self?.close()
         }
 
         updateOrigin(for: screen)
-
-        // Color manager must be updated after updating the panel's origin, but before it is shown.
-        //
-        // Color manager handles frame changes automatically, but does so on the main queue, so we
-        // need to update manually once before showing the panel to prevent the color from flashing.
-        colorManager.updateAllProperties(with: frame, screen: screen)
 
         orderFrontRegardless()
     }
@@ -192,14 +184,13 @@ final class IceBarPanel: NSPanel {
 
 // MARK: - IceBarHostingView
 
-private final class IceBarHostingView: NSHostingView<AnyView> {
+final class IceBarHostingView: NSHostingView<AnyView> {
     override var safeAreaInsets: NSEdgeInsets {
         NSEdgeInsets()
     }
 
     init(
         appState: AppState,
-        colorManager: IceBarColorManager,
         screen: NSScreen,
         section: MenuBarSection.Name,
         closePanel: @escaping () -> Void
@@ -211,7 +202,6 @@ private final class IceBarHostingView: NSHostingView<AnyView> {
                 .environmentObject(appState.imageCache)
                 .environmentObject(appState.itemManager)
                 .environmentObject(appState.menuBarManager)
-                .environmentObject(colorManager)
                 .erasedToAnyView()
         )
     }
@@ -236,7 +226,6 @@ private final class IceBarHostingView: NSHostingView<AnyView> {
 private struct IceBarContentView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @EnvironmentObject var appState: AppState
-    @EnvironmentObject var colorManager: IceBarColorManager
     @EnvironmentObject var itemManager: MenuBarItemManager
     @EnvironmentObject var imageCache: MenuBarItemImageCache
     @EnvironmentObject var menuBarManager: MenuBarManager
@@ -285,10 +274,6 @@ private struct IceBarContentView: View {
         configuration.current.hasShadow ? 0.5 : 0.33
     }
 
-    private var backgroundColorScheme: ColorScheme? {
-        (colorManager.colorInfo?.color.brightness).map { $0 > 0.67 ? .light : .dark }
-    }
-
     private var background: some View {
         ZStack {
             if reduceTransparency {
@@ -335,8 +320,6 @@ private struct IceBarContentView: View {
         .frame(maxWidth: imageCache.screen?.frame.width)
         .fixedSize()
         .onFrameChange(update: $frame)
-        // Captured menu bar icons retain their original light or dark pixels.
-        .preferredColorScheme(backgroundColorScheme)
     }
 
     @ViewBuilder

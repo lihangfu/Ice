@@ -216,7 +216,3 @@
 "Get Started" = "开始使用";
 "You can use basic features without Screen Recording." = "暂不开启屏幕录制，也可以使用基础功能。";
 "You can change permissions in System Settings at any time." = "你可以随时在系统设置中更改权限。";
-
-"Background blur" = "背景模糊";
-"Blur the wallpaper behind menu bar text and icons. Zero restores the system background. Requires screen recording permission and Reduce Transparency to be off." = "模糊菜单栏文字和图标背后的壁纸。设为零可恢复系统背景。需要屏幕录制权限，并关闭“降低透明度”。";
-"Background blur is unavailable with Reduce Transparency or on this system." = "已开启“降低透明度”，或当前系统不支持背景模糊。";

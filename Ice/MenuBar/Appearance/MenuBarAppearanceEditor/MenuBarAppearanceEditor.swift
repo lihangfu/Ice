@@ -14,8 +14,6 @@ struct MenuBarAppearanceEditor: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var appearanceManager: MenuBarAppearanceManager
 
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
     let location: Location
 
     private var mainFormPadding: EdgeInsets {
@@ -63,25 +61,6 @@ struct MenuBarAppearanceEditor: View {
         IceForm(padding: mainFormPadding) {
             if case .settings = location {
                 SettingsPageHeader(identifier: .menuBarAppearance)
-            }
-            IceSection {
-                IceLabeledContent("Background blur") {
-                    HStack {
-                        Slider(value: appearanceManager.bindings.configuration.wallpaperBlurRadius, in: 0...30)
-                            .accessibilityLabel(Text("Background blur"))
-                        Text("\(Int((appearanceManager.configuration.wallpaperBlurRadius / 30 * 100).rounded()))%")
-                            .monospacedDigit()
-                            .frame(width: 44, alignment: .trailing)
-                    }
-                    .frame(width: 220)
-                    .disabled(reduceTransparency || !MenuBarWallpaperBlurView.isSupported)
-                }
-                .settingHelp("Blur the wallpaper behind menu bar text and icons. Zero restores the system background. Requires screen recording permission and Reduce Transparency to be off.")
-                if reduceTransparency || !MenuBarWallpaperBlurView.isSupported {
-                    Text("Background blur is unavailable with Reduce Transparency or on this system.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
             }
             UnlabeledPartialEditor(configuration: appearanceManager.bindings.configuration.staticConfiguration)
             IceSection("Menu Bar Shape") {
