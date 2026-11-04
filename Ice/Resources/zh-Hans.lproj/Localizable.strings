@@ -145,17 +145,6 @@
 "Screen Recording" = "屏幕录制";
 "Permission Granted" = "已授权";
 "Grant Permission" = "授予权限";
-"Ice needs permission to manage the menu bar." = "Ice 需要获得权限才能管理菜单栏。";
-"Absolutely no personal information is collected or stored." = "绝不会收集或存储任何个人信息。";
-"Ice needs this to:" = "Ice 需要此权限来：";
-"Get real-time information about the menu bar." = "实时获取菜单栏信息。";
-"Arrange menu bar items." = "排列菜单栏项目。";
-"Edit the menu bar's appearance." = "编辑菜单栏外观。";
-"Display images of individual menu bar items." = "显示各菜单栏项目的图像。";
-"Ice can work in a limited mode without this permission." = "未授予此权限时，Ice 仍可在受限模式下运行。";
-"Continue in Limited Mode" = "以受限模式继续";
-"Continue" = "继续";
-"Quit" = "退出";
 "OK" = "好";
 
 /* About and updates */

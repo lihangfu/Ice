@@ -7,7 +7,6 @@
 "1 second" = "1 second";
 "A new update is available" = "A new update is available";
 "About" = "About";
-"Absolutely no personal information is collected or stored." = "Absolutely no personal information is collected or stored.";
 "Accessibility" = "Accessibility";
 "Accessibility Shortcuts" = "Accessibility Shortcuts";
 "Acknowledgements" = "Acknowledgements";
@@ -18,7 +17,6 @@
 "Apply system theme to icon" = "Apply system theme to icon";
 "Apply the current spacing" = "Apply the current spacing";
 "Applying this setting will relaunch all apps with menu bar items. Some apps may need to be manually relaunched." = "Applying this setting will relaunch all apps with menu bar items. Some apps may need to be manually relaunched.";
-"Arrange menu bar items." = "Arrange menu bar items.";
 "Arrow" = "Arrow";
 "Automatically check for updates" = "Automatically check for updates";
 "Automatically download updates" = "Automatically download updates";
@@ -35,12 +33,9 @@
 "Choose image…" = "Choose image…";
 "Click inside an empty area of the menu bar to show hidden menu bar items" = "Click inside an empty area of the menu bar to show hidden menu bar items";
 "Click item" = "Click item";
-"Continue" = "Continue";
-"Continue in Limited Mode" = "Continue in Limited Mode";
 "Contribute" = "Contribute";
 "Could not complete event operation for \"%@\"" = "Could not complete event operation for \"%@\"";
 "Custom" = "Custom";
-"Display images of individual menu bar items." = "Display images of individual menu bar items.";
 "Display the icon as a monochrome image matching the system appearance" = "Display the icon as a monochrome image matching the system appearance";
 "Done" = "Done";
 "Door" = "Door";
@@ -50,7 +45,6 @@
 "Dynamic" = "Dynamic";
 "ERROR" = "ERROR";
 "Edit Menu Bar Appearance…" = "Edit Menu Bar Appearance…";
-"Edit the menu bar's appearance." = "Edit the menu bar's appearance.";
 "Ellipsis" = "Ellipsis";
 "Enable always-hidden section" = "Enable always-hidden section";
 "Enable the Ice Bar" = "Enable the Ice Bar";
@@ -62,7 +56,6 @@
 "Frame check timed out for \"%@\"" = "Frame check timed out for \"%@\"";
 "Full" = "Full";
 "General" = "General";
-"Get real-time information about the menu bar." = "Get real-time information about the menu bar.";
 "Go to Advanced Settings" = "Go to Advanced Settings";
 "Gradient" = "Gradient";
 "Grant Permission" = "Grant Permission";
@@ -74,13 +67,10 @@
 "Hover over an empty area of the menu bar to show hidden menu bar items" = "Hover over an empty area of the menu bar to show hidden menu bar items";
 "Ice Cube" = "Ice Cube";
 "Ice Settings…" = "Ice Settings…";
-"Ice can work in a limited mode without this permission." = "Ice can work in a limited mode without this permission.";
 "Ice cannot arrange menu bar items in automatically hidden menu bars" = "Ice cannot arrange menu bar items in automatically hidden menu bars";
 "Ice cannot display menu bar items for automatically hidden menu bars" = "Ice cannot display menu bar items for automatically hidden menu bars";
 "Ice cannot edit the appearance of automatically hidden menu bars" = "Ice cannot edit the appearance of automatically hidden menu bars";
 "Ice icon" = "Ice icon";
-"Ice needs permission to manage the menu bar." = "Ice needs permission to manage the menu bar.";
-"Ice needs this to:" = "Ice needs this to:";
 "Insert divider items" = "Insert divider items";
 "Invalid app state for \"%@\"" = "Invalid app state for \"%@\"";
 "Invalid cursor location for \"%@\"" = "Invalid cursor location for \"%@\"";
@@ -124,7 +114,6 @@
 "Permission Granted" = "Permission Granted";
 "Permissions" = "Permissions";
 "Please try again. If the error persists, please file a bug report." = "Please try again. If the error persists, please file a bug report.";
-"Quit" = "Quit";
 "Quit Ice" = "Quit Ice";
 "Record Hotkey" = "Record Hotkey";
 "Report a Bug" = "Report a Bug";

@@ -19,8 +19,6 @@ class Permission: ObservableObject, Identifiable {
 
     /// The title of the permission.
     let title: String
-    /// Descriptive details for the permission.
-    let details: [String]
     /// A Boolean value that indicates if the app can work without this permission.
     let isRequired: Bool
 
@@ -33,28 +31,23 @@ class Permission: ObservableObject, Identifiable {
 
     /// Observer that runs on a timer to check permissions.
     private var timerCancellable: AnyCancellable?
-    /// Observer that observes the ``hasPermission`` property.
-    private var hasPermissionCancellable: AnyCancellable?
 
     /// Creates a permission.
     ///
     /// - Parameters:
     ///   - title: The title of the permission.
-    ///   - details: Descriptive details for the permission.
     ///   - isRequired: A Boolean value that indicates if the app can work without this permission.
     ///   - settingsURL: The URL of the settings pane to open.
     ///   - check: A function that checks permissions.
     ///   - request: A function that requests permissions.
     init(
         title: String,
-        details: [String],
         isRequired: Bool,
         settingsURL: URL?,
         check: @escaping () -> Bool,
         request: @escaping () -> Void
     ) {
         self.title = title
-        self.details = details
         self.isRequired = isRequired
         self.settingsURL = settingsURL
         self.check = check
@@ -84,32 +77,10 @@ class Permission: ObservableObject, Identifiable {
         }
     }
 
-    /// Asynchronously waits for the app to be granted this permission.
-    func waitForPermission() async {
-        configureCancellables()
-        guard !hasPermission else {
-            return
-        }
-        return await withCheckedContinuation { continuation in
-            hasPermissionCancellable = $hasPermission.sink { [weak self] hasPermission in
-                guard let self else {
-                    continuation.resume()
-                    return
-                }
-                if hasPermission {
-                    hasPermissionCancellable?.cancel()
-                    continuation.resume()
-                }
-            }
-        }
-    }
-
     /// Stops running the permission check.
     func stopCheck() {
         timerCancellable?.cancel()
         timerCancellable = nil
-        hasPermissionCancellable?.cancel()
-        hasPermissionCancellable = nil
     }
 }
 
@@ -119,10 +90,6 @@ final class AccessibilityPermission: Permission {
     init() {
         super.init(
             title: "Accessibility",
-            details: [
-                "Get real-time information about the menu bar.",
-                "Arrange menu bar items.",
-            ],
             isRequired: true,
             settingsURL: nil,
             check: {
@@ -141,10 +108,6 @@ final class ScreenRecordingPermission: Permission {
     init() {
         super.init(
             title: "Screen Recording",
-            details: [
-                "Edit the menu bar's appearance.",
-                "Display images of individual menu bar items.",
-            ],
             isRequired: false,
             settingsURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"),
             check: {
