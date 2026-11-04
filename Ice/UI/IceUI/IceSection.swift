@@ -101,7 +101,7 @@ struct IceSection<Header: View, Content: View, Footer: View>: View {
 
     var body: some View {
         if isBordered {
-            IceGroupBox(padding: style == .settings ? max(spacing, 14) : spacing) {
+            IceGroupBox(padding: spacing) {
                 header
             } content: {
                 dividedContent

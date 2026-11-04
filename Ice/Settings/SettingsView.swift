@@ -18,12 +18,12 @@ struct SettingsView: View {
         }
     }
 
-    private var sidebarItemHeight: CGFloat {
+    private var sidebarIconSize: CGFloat {
         switch sidebarRowSize {
-        case .small: 24
-        case .medium: 28
-        case .large: 34
-        @unknown default: 28
+        case .small: 16
+        case .medium: 20
+        case .large: 26
+        @unknown default: 20
         }
     }
 
@@ -93,13 +93,14 @@ struct SettingsView: View {
 
     @ViewBuilder
     private func sidebarItem(for identifier: SettingsNavigationIdentifier) -> some View {
-        HStack(spacing: 10) {
-            SettingsPaneIcon(identifier: identifier, size: sidebarItemHeight - 6)
+        HStack(spacing: 6) {
+            SettingsPaneIcon(identifier: identifier, size: sidebarIconSize)
             Text(identifier.localized)
                 .font(.system(size: sidebarItemFontSize))
             Spacer(minLength: 0)
         }
-        .frame(minHeight: sidebarItemHeight)
+        // The native sidebar adds its own vertical row insets around this content.
+        .frame(minHeight: sidebarIconSize)
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
     }

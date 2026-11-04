@@ -78,7 +78,8 @@ requests. It verifies assets, image scales, light/dark colors, translations,
 metadata, signature and relocation, and checks that missing resources fail.
 It also checks legacy appearance migration. It does not exercise menu bar
 manipulation or grant macOS permissions. To render the actual appearance editor
-in both system themes without changing saved settings:
+and general settings pane in both system themes without changing saved settings
+(including small, medium, and large sidebar sizes):
 
 ```sh
 build/Ice.app/Contents/MacOS/Ice --validate-appearance build/appearance-validation

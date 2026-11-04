@@ -149,7 +149,22 @@ enum LocalBuildValidation {
                 RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.2))
                 _ = try snapshot(host, name: "settings-\(name)")
             }
+            let settings = SettingsView()
+                .environmentObject(state)
+                .environmentObject(state.navigationState)
+                .environment(\.locale, Locale(identifier: "zh-Hans"))
+            window.setContentSize(NSSize(width: 825, height: 612))
+            for (sizeName, rowSize) in [("small", SidebarRowSize.small), ("medium", .medium), ("large", .large)] {
+                let settingsHost = NSHostingView(rootView: settings.environment(\.sidebarRowSize, rowSize))
+                window.contentView = settingsHost
+                for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+                    window.appearance = NSAppearance(named: appearance)
+                    RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.2))
+                    _ = try snapshot(settingsHost, name: "general-\(sizeName)-\(name)")
+                }
+            }
             print("PASS: real unified SwiftUI appearance editor in light/dark")
+            print("PASS: real settings navigation and general pane at all sidebar sizes in light/dark")
             return 0
         } catch {
             FileHandle.standardError.write(Data("Appearance validation failed: \(error)\n".utf8))

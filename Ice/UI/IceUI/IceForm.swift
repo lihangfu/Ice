@@ -82,7 +82,7 @@ struct IceForm<Content: View>: View {
 
     @ViewBuilder
     private var contentStack: some View {
-        VStack(alignment: alignment, spacing: style == .settings ? max(spacing, 16) : spacing) {
+        VStack(alignment: alignment, spacing: spacing) {
             content
                 .toggleStyle(IceFormToggleStyle())
         }
