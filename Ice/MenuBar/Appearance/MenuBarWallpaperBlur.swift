@@ -30,19 +30,29 @@ enum MenuBarWallpaperBlurRenderer {
     static func render(_ source: MenuBarWallpaperBlurSource, radius: Double) -> Output? {
         let width = source.menuBar.width
         let height = source.menuBar.height
-        guard width > 0, height >= 4, source.scale.isFinite, source.scale > 0,
-              radius.isFinite, (0...30).contains(radius),
-              source.crop.origin.x.isFinite, source.crop.origin.y.isFinite,
-              source.crop.width.isFinite, source.crop.height.isFinite,
-              !source.crop.isEmpty,
-              CGRect(x: 0, y: 0, width: source.wallpaper.width, height: source.wallpaper.height).contains(source.crop) else {
+        guard
+            width > 0, height >= 4, source.scale.isFinite, source.scale > 0,
+            radius.isFinite, (0...30).contains(radius),
+            source.crop.origin.x.isFinite, source.crop.origin.y.isFinite,
+            source.crop.width.isFinite, source.crop.height.isFinite,
+            !source.crop.isEmpty,
+            CGRect(x: 0, y: 0, width: source.wallpaper.width, height: source.wallpaper.height).contains(source.crop)
+        else {
             return nil
         }
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-              let bitmap = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8,
-                                     bytesPerRow: width * 4, space: space,
-                                     bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue),
-              let data = bitmap.data else {
+        guard
+            let space = CGColorSpace(name: CGColorSpace.sRGB),
+            let bitmap = CGContext(
+                data: nil,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: width * 4,
+                space: space,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ),
+            let data = bitmap.data
+        else {
             return nil
         }
         bitmap.draw(source.menuBar, in: CGRect(x: 0, y: 0, width: width, height: height))
@@ -79,11 +89,22 @@ enum MenuBarWallpaperBlurRenderer {
                 }
             }
         }
-        guard let provider = CGDataProvider(data: Data(normalization) as CFData),
-              let normalized = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32,
-                                       bytesPerRow: width * 4, space: space,
-                                       bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
-                                       provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent) else {
+        guard
+            let provider = CGDataProvider(data: Data(normalization) as CFData),
+            let normalized = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: width * 4,
+                space: space,
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+            )
+        else {
             return nil
         }
         let wallpaper = CIImage(cgImage: source.wallpaper).clampedToExtent()
@@ -107,10 +128,12 @@ final class MenuBarWallpaperBlurView: NSVisualEffectView {
     }()
 
     static let isSupported: Bool = {
-        guard let type = NSClassFromString("CABackdropLayer") as? CALayer.Type,
-              setSublevel != nil,
-              NSVisualEffectView.accessInstanceVariablesDirectly,
-              class_getInstanceVariable(NSVisualEffectView.self, "_clear") != nil else {
+        guard
+            let type = NSClassFromString("CABackdropLayer") as? CALayer.Type,
+            setSublevel != nil,
+            NSVisualEffectView.accessInstanceVariablesDirectly,
+            class_getInstanceVariable(NSVisualEffectView.self, "_clear") != nil
+        else {
             return false
         }
         let layer = type.init()
@@ -182,8 +205,10 @@ final class MenuBarWallpaperBlurView: NSVisualEffectView {
 
     func update(source: MenuBarWallpaperBlurSource?, radius: Double, shape: CGPath) {
         clipping.path = shape
-        guard let source, radius > 0, radius.isFinite, radius <= 30, backdrop != nil,
-              !NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency else {
+        guard
+            let source, radius > 0, radius.isFinite, radius <= 30, backdrop != nil,
+            !NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
+        else {
             suspend()
             return
         }
@@ -201,8 +226,10 @@ final class MenuBarWallpaperBlurView: NSVisualEffectView {
             guard !Task.isCancelled else { return }
             await MainActor.run { [weak self] in
                 guard let self, self.generation == expectedGeneration else { return }
-                guard let output, let window = self.window,
-                      Self.setSublevel?(CGSMainConnectionID(), UInt32(window.windowNumber), -1) == 0 else {
+                guard
+                    let output, let window = self.window,
+                    Self.setSublevel?(CGSMainConnectionID(), UInt32(window.windowNumber), -1) == 0
+                else {
                     self.suspend()
                     return
                 }

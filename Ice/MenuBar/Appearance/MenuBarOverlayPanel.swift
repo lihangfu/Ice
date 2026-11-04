@@ -365,11 +365,13 @@ final class MenuBarOverlayPanel: NSPanel {
         if desktopWallpaper?.dataProvider?.data != wallpaper?.dataProvider?.data {
             desktopWallpaper = wallpaper
         }
-        guard isVisible,
-              appState?.menuBarManager.isMenuBarHiddenBySystem != true,
-              (appState?.appearanceManager.configuration.wallpaperBlurRadius ?? 0) > 0,
-              MenuBarWallpaperBlurView.isSupported,
-              !NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency else {
+        guard
+            isVisible,
+            appState?.menuBarManager.isMenuBarHiddenBySystem != true,
+            (appState?.appearanceManager.configuration.wallpaperBlurRadius ?? 0) > 0,
+            MenuBarWallpaperBlurView.isSupported,
+            !NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency
+        else {
             wallpaperBlurSource = nil
             wallpaperBlurView.suspend()
             return
@@ -377,9 +379,11 @@ final class MenuBarOverlayPanel: NSPanel {
         // Sample three maximum blur radii beyond the strip before cropping to avoid
         // stretching the strip's bottom edge into the blurred wallpaper.
         let captureRect = menuFrame.insetBy(dx: 0, dy: -90).intersection(CGDisplayBounds(display))
-        guard !captureRect.isEmpty,
-              let paddedWallpaper = ScreenCapture.captureWindow(wallpaperWindow.windowID, screenBounds: captureRect),
-              let nativeMenu = ScreenCapture.captureWindow(menuBarWindow.windowID, screenBounds: menuFrame) else {
+        guard
+            !captureRect.isEmpty,
+            let paddedWallpaper = ScreenCapture.captureWindow(wallpaperWindow.windowID, screenBounds: captureRect),
+            let nativeMenu = ScreenCapture.captureWindow(menuBarWindow.windowID, screenBounds: menuFrame)
+        else {
             wallpaperBlurSource = nil
             wallpaperBlurView.suspend()
             return
@@ -388,9 +392,12 @@ final class MenuBarOverlayPanel: NSPanel {
         wallpaperBlurSource = MenuBarWallpaperBlurSource(
             wallpaper: paddedWallpaper,
             menuBar: nativeMenu,
-            crop: CGRect(x: (menuFrame.minX - captureRect.minX) * scale,
-                         y: (captureRect.maxY - menuFrame.maxY) * scale,
-                         width: menuFrame.width * scale, height: menuFrame.height * scale),
+            crop: CGRect(
+                x: (menuFrame.minX - captureRect.minX) * scale,
+                y: (captureRect.maxY - menuFrame.maxY) * scale,
+                width: menuFrame.width * scale,
+                height: menuFrame.height * scale
+            ),
             scale: scale
         )
     }

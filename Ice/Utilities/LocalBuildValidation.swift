@@ -199,16 +199,26 @@ enum LocalBuildValidation {
                 try save(image, name)
                 return image
             }
-            let menuRect = CGRect(x: CGDisplayBounds(screen.displayID).minX,
-                                  y: CGDisplayBounds(screen.displayID).minY,
-                                  width: screen.frame.width, height: height)
+            let menuRect = CGRect(
+                x: CGDisplayBounds(screen.displayID).minX,
+                y: CGDisplayBounds(screen.displayID).minY,
+                width: screen.frame.width,
+                height: height
+            )
             try capture("system-before", rect: menuRect)
             let state = AppState()
             let panel = MenuBarOverlayPanel(appState: state, owningScreen: screen)
             panel.isReleasedWhenClosed = false
             defer { panel.close() }
-            panel.setFrame(CGRect(x: screen.frame.minX, y: screen.frame.maxY - height - 5,
-                                  width: screen.frame.width, height: height + 5), display: true)
+            panel.setFrame(
+                CGRect(
+                    x: screen.frame.minX,
+                    y: screen.frame.maxY - height - 5,
+                    width: screen.frame.width,
+                    height: height + 5
+                ),
+                display: true
+            )
             panel.orderFrontRegardless()
             state.appearanceManager.configuration.wallpaperBlurRadius = 12.345
             panel.requestWallpaperUpdate()
@@ -246,10 +256,18 @@ enum LocalBuildValidation {
             // Exercise both foreground polarities with real WindowServer composition,
             // without changing the user's wallpaper, appearance, or preferences.
             let size = CGSize(width: 420, height: 32)
-            let fixtureFrame = CGRect(x: screen.frame.minX + 100, y: screen.frame.maxY - 180,
-                                      width: size.width, height: size.height)
-            let fixtureRect = CGRect(x: menuRect.minX + 100, y: menuRect.minY + 148,
-                                     width: size.width, height: size.height)
+            let fixtureFrame = CGRect(
+                x: screen.frame.minX + 100,
+                y: screen.frame.maxY - 180,
+                width: size.width,
+                height: size.height
+            )
+            let fixtureRect = CGRect(
+                x: menuRect.minX + 100,
+                y: menuRect.minY + 148,
+                width: size.width,
+                height: size.height
+            )
             func fixture(lightText: Bool, stripes: Bool) throws -> CGImage {
                 let image = NSImage(size: size, flipped: false) { rect in
                     if stripes {
@@ -276,8 +294,12 @@ enum LocalBuildValidation {
             var fixtureBackground: NSColor?
             for lightText in [false, true] {
                 let native = try fixture(lightText: lightText, stripes: false)
-                let source = MenuBarWallpaperBlurSource(wallpaper: wallpaper, menuBar: native,
-                                                       crop: CGRect(origin: .zero, size: size), scale: 1)
+                let source = MenuBarWallpaperBlurSource(
+                    wallpaper: wallpaper,
+                    menuBar: native,
+                    crop: CGRect(origin: .zero, size: size),
+                    scale: 1
+                )
                 guard let output = MenuBarWallpaperBlurRenderer.render(source, radius: 12.345) else {
                     throw Failure(description: "Renderer rejected valid fixture.")
                 }
@@ -354,6 +376,5 @@ enum LocalBuildValidation {
             return 1
         }
     }
-
 }
 #endif

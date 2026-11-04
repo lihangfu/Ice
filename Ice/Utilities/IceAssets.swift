@@ -91,8 +91,10 @@ enum IceAssets {
     }
 
     private static let imageDirectories: [String: URL] = {
-        guard let catalog = resourceBundle.url(forResource: "Assets", withExtension: "xcassets"),
-              let enumerator = FileManager.default.enumerator(at: catalog, includingPropertiesForKeys: nil) else {
+        guard
+            let catalog = resourceBundle.url(forResource: "Assets", withExtension: "xcassets"),
+            let enumerator = FileManager.default.enumerator(at: catalog, includingPropertiesForKeys: nil)
+        else {
             return [:]
         }
         var directories = [String: URL]()
@@ -116,8 +118,12 @@ enum IceAssets {
         }
         func color(_ entry: ColorManifest.Entry) -> NSColor {
             let values = entry.color.components
-            guard let red = Double(values["red"] ?? ""), let green = Double(values["green"] ?? ""),
-                  let blue = Double(values["blue"] ?? ""), let alpha = Double(values["alpha"] ?? "") else {
+            guard
+                let red = Double(values["red"] ?? ""),
+                let green = Double(values["green"] ?? ""),
+                let blue = Double(values["blue"] ?? ""),
+                let alpha = Double(values["alpha"] ?? "")
+            else {
                 preconditionFailure("Invalid layout bar color components.")
             }
             return NSColor(displayP3Red: red, green: green, blue: blue, alpha: alpha)
