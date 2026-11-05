@@ -159,7 +159,6 @@
 "Acknowledgements" = "致谢";
 "Contribute" = "参与贡献";
 "Report a Bug" = "反馈问题";
-"Support Ice" = "支持 Ice";
 "Checking for updates is not supported in debug mode." = "调试模式不支持检查更新。";
 "A new update is available" = "有新版本可用";
 "Version %@ is now available" = "版本 %@ 现已可用";

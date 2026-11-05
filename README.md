@@ -3,37 +3,19 @@
     <h1>Ice</h1>
 </div>
 
-Ice is a powerful menu bar management tool. While its primary function is hiding and showing menu bar items, it aims to cover a wide variety of additional features to make it one of the most versatile menu bar tools available.
+Ice is a menu bar management tool for macOS 14 and later.
 
-![Banner](https://github.com/user-attachments/assets/4423085c-4e4b-4f3d-ad0f-90a217c03470)
+This project is based on [jordanbaird/Ice](https://github.com/jordanbaird/Ice)
+and is developed independently.
 
 [![Download](https://img.shields.io/badge/download-latest-brightgreen?style=flat-square)](https://github.com/lihangfu/Ice/releases/latest)
 ![Platform](https://img.shields.io/badge/platform-macOS-blue?style=flat-square)
 ![Requirements](https://img.shields.io/badge/requirements-macOS%2014%2B-fa4e49?style=flat-square)
-[![Sponsor](https://img.shields.io/badge/Sponsor%20%E2%9D%A4%EF%B8%8F-8A2BE2?style=flat-square)](https://github.com/sponsors/jordanbaird)
-[![Website](https://img.shields.io/badge/Website-015FBA?style=flat-square)](https://icemenubar.app)
-[![License](https://img.shields.io/github/license/jordanbaird/Ice?style=flat-square)](LICENSE)
-
-> [!NOTE]
-> Ice is currently in active development. Some features have not yet been implemented. Download the latest release [here](https://github.com/lihangfu/Ice/releases/latest) and see the roadmap below for upcoming features.
-
-<a href="https://www.buymeacoffee.com/jordanbaird" target="_blank">
-    <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;">
-</a>
+[![License](https://img.shields.io/github/license/lihangfu/Ice?style=flat-square)](LICENSE)
 
 ## Install
 
-### Manual Installation
-
 Download the "Ice.zip" file from the [latest release](https://github.com/lihangfu/Ice/releases/latest) and move the unzipped app into your `Applications` folder.
-
-### Homebrew
-
-Install Ice using the following command:
-
-```sh
-brew install --cask jordanbaird-ice
-```
 
 ## Build and run locally without Xcode
 
@@ -101,13 +83,11 @@ build/Ice.app/Contents/MacOS/Ice --validate-appearance build/icon-negative --ori
 For the equivalent settings layout negative control, use
 `--original-layout-icons-control` instead.
 
-
-
-## Releasing this fork
+## Releasing
 
 The [Release Ice workflow](.github/workflows/release.yml) builds and publishes
 `Ice.zip` and an `appcast.xml` containing its update signature to the repository
-where the tag is pushed. In this fork, releases are published to
+where the tag is pushed. Releases for this project are published to
 [lihangfu/Ice](https://github.com/lihangfu/Ice/releases).
 
 ### One-time update signing setup
@@ -200,33 +180,32 @@ It then uses the pinned Sparkle package's tools to sign the archive, generate th
 appcast, and verify the update signature and metadata.
 
 The workflow uses GitHub's `GITHUB_TOKEN` with `contents: write` permission to
-publish the release. For a fork, enable GitHub Actions in the repository's Actions
-tab if it is disabled.
+publish the release. Enable GitHub Actions in the repository's Actions tab if it
+is disabled.
 
-Automatic and manual update checks both read this fork's latest release's `appcast.xml` and
-download its signed `Ice.zip`. The Homebrew cask still installs upstream Ice.
+Automatic and manual update checks both read this repository's latest release's
+`appcast.xml` and download its signed `Ice.zip`.
 Changing from ad-hoc to Developer ID signing may require users to grant
 Accessibility and Screen Recording access again.
 
-Install the first build with this update configuration manually. Existing builds
-still use the upstream feed and key and cannot discover this fork's updates.
-To test the new feed, use two Release builds from this fork: check for updates
-manually in the older build, then enable automatic checks and downloads and
+Install a release manually if the installed app uses a different update feed or
+signing key. To test the feed, use two Release builds from this repository: check
+for updates manually in the older build, then enable automatic checks and downloads and
 confirm that the newer version is offered and installed.
 
 Existing releases are not overwritten. If publishing fails, inspect the release
 for a partially created draft before rerunning the job. To withdraw a bad build,
 remove its release through GitHub; publish corrections under a new tag.
 To recover from a broken release, manually install a known-good build from this
-fork, keeping the same signing key, then publish a corrected build with a higher
-build number. A source rollback alone does not change already installed apps.
+repository, keeping the same signing key, then publish a corrected build with a
+higher build number. A source rollback alone does not change already installed apps.
 To roll back this signing integration, revert the workflow change before creating
 a new tag; older workflow revisions produce ad-hoc builds without notarization.
 Rotate the `.p12` secrets before the Developer ID certificate expires, keeping the
 same team and Sparkle update-signing key. An Apple identity change does not replace
 Sparkle's update-signing key.
 
-## Features/Roadmap
+## Features
 
 Settings show contextual explanations behind the circled question mark next to
 each relevant setting's name. Hover to read the explanation, or activate the help
@@ -235,55 +214,45 @@ status messages remain visible in the settings page.
 
 ### Menu bar item management
 
-- [x] Hide menu bar items
-- [x] "Always-hidden" menu bar section
-- [x] Show hidden menu bar items when hovering over the menu bar
-- [x] Show hidden menu bar items when an empty area in the menu bar is clicked
-- [x] Show hidden menu bar items by scrolling or swiping in the menu bar
-- [x] Automatically rehide menu bar items
-- [x] Hide application menus when they overlap with shown menu bar items
-- [x] Drag and drop interface to arrange individual menu bar items
-- [x] Display hidden menu bar items in a separate bar (e.g. for MacBooks with the notch)
-- [x] Search menu bar items
-- [x] Menu bar item spacing (BETA)
-- [ ] Profiles for menu bar layout
-- [ ] Individual spacer items
-- [ ] Menu bar item groups
-- [ ] Show menu bar items when trigger conditions are met
+- Hide menu bar items
+- "Always-hidden" menu bar section
+- Show hidden menu bar items when hovering over the menu bar
+- Show hidden menu bar items when an empty area in the menu bar is clicked
+- Show hidden menu bar items by scrolling or swiping in the menu bar
+- Automatically rehide menu bar items
+- Hide application menus when they overlap with shown menu bar items
+- Drag and drop interface to arrange individual menu bar items
+- Display hidden menu bar items in a separate bar (e.g. for MacBooks with the notch)
+- Search menu bar items
+- Menu bar item spacing (BETA)
 
 ### Menu bar appearance
 
-- [x] Menu bar tint (solid and gradient)
-- [x] Menu bar shadow
-- [x] Menu bar border
-- [x] Custom menu bar shapes (rounded and/or split)
-- [ ] Remove background behind menu bar
-- [ ] Rounded screen corners
-- [ ] Different settings for light/dark mode
+- Menu bar tint (solid and gradient)
+- Menu bar shadow
+- Menu bar border
+- Custom menu bar shapes (rounded and/or split)
 
 ### Hotkeys
 
-- [x] Toggle individual menu bar sections
-- [x] Show the search panel
-- [x] Enable/disable the Ice Bar
-- [x] Show/hide section divider icons
-- [x] Toggle application menus
-- [ ] Enable/disable auto rehide
-- [ ] Temporarily show individual menu bar items
+- Toggle individual menu bar sections
+- Show the search panel
+- Enable/disable the Ice Bar
+- Show/hide section divider icons
+- Toggle application menus
 
 ### Other
 
-- [x] Launch at login
-- [x] Automatic updates
-- [ ] Menu bar widgets
+- Launch at login
+- Automatic updates
 
 ## Why does Ice only support macOS 14 and later?
 
-Ice uses a number of system APIs that are available starting in macOS 14. As such, there are no plans to support earlier versions of macOS.
+Ice uses system APIs that are available starting in macOS 14.
 
-## Gallery
+## Appearance
 
-#### Show hidden menu bar items below the menu bar
+### Ice Bar and menu bar layout
 
 The Ice Bar uses a native frosted background that blurs the windows behind it
 while keeping menu bar icons sharp. It respects macOS Reduce Transparency,
@@ -294,13 +263,7 @@ This adaptation applies to Ice Bar and the visible, hidden, and always-hidden
 sections in settings. Drag previews use the same themed colors. Search results
 keep the originals.
 
-![Ice Bar](https://github.com/user-attachments/assets/f1429589-6186-4e1b-8aef-592219d49b9b)
-
-#### Drag-and-drop interface to arrange menu bar items
-
-![Menu Bar Layout](https://github.com/user-attachments/assets/095442ba-f2d0-4bb4-9632-91e26ef8d45b)
-
-#### Customize the menu bar's appearance
+### Menu bar customization
 
 Tint, shadow, border and shape use one shared configuration in both system
 appearances. When upgrading from dynamic appearance settings, Ice preserves
@@ -311,16 +274,6 @@ Menu bar background blur customization is no longer provided. Existing blur
 strength settings are ignored and omitted when appearance settings are saved.
 Tint, shadow, border and shape settings remain available. Ice Bar continues to
 use its native frosted background, following the system light/dark appearance.
-
-![Menu Bar Appearance](https://github.com/user-attachments/assets/8c22c185-c3d2-49bb-971e-e1fc17df04b3)
-
-#### Menu bar item search
-
-![Menu Bar Item Search](https://github.com/user-attachments/assets/d1a7df3a-4989-4077-a0b1-8e7d5a1ba5b8)
-
-#### Custom menu bar item spacing
-
-![Menu Bar Item Spacing](https://github.com/user-attachments/assets/b196aa7e-184a-4d4c-b040-502f4aae40a6)
 
 ## License
 

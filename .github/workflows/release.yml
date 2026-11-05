@@ -276,7 +276,7 @@ jobs:
           cat > "$RUNNER_TEMP/ice-release-notes.md" <<'EOF'
           Download Ice.zip, unzip it, and move Ice.app into Applications.
 
-          Install this release manually once to switch from the upstream update feed.
+          Install this release manually if your installed app uses a different update feed or signing key.
 
           This build supports Apple Silicon and Intel Macs running macOS 14 or later.
           It is signed with Developer ID, has Hardened Runtime enabled, and is notarized by Apple.

@@ -21,16 +21,11 @@ struct AboutSettingsPane: View {
 
     private var contributeURL: URL {
         // swiftlint:disable:next force_unwrapping
-        URL(string: "https://github.com/jordanbaird/Ice")!
+        URL(string: "https://github.com/lihangfu/Ice")!
     }
 
     private var issuesURL: URL {
         contributeURL.appendingPathComponent("issues")
-    }
-
-    private var donateURL: URL {
-        // swiftlint:disable:next force_unwrapping
-        URL(string: "https://icemenubar.app/Donate")!
     }
 
     private var lastUpdateCheckString: String {
@@ -134,10 +129,6 @@ struct AboutSettingsPane: View {
             }
             .buttonStyle(.link)
             HStack {
-                Button("Support Ice", systemImage: "heart") {
-                    openURL(donateURL)
-                }
-                .buttonStyle(.link)
                 Spacer()
                 Button("Quit Ice") {
                     NSApp.terminate(nil)
