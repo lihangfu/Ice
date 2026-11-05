@@ -10,7 +10,7 @@ this project's independently maintained behavior and releases.
 ## Decision
 
 README owns a single source attribution and describes this project's current
-features, installation, build and release contracts. Inherited screenshots and
+features and installation. Inherited screenshots and
 unimplemented roadmap entries are removed rather than presented as current
 product evidence or commitments.
 
@@ -31,7 +31,9 @@ The code of conduct refers to this project's maintainer.
 The GPL license, existing copyright notices and third-party acknowledgements
 remain. The bundle identifier is retained for installation compatibility.
 Future screenshots and roadmap entries need evidence or decisions from this
-project. Build and release instructions remain owned by README.
+project. The [reader-focused README](2026-11-05-reader-focused-readme.md)
+decision moves build and release contracts to the
+[developer guide](../../../development.en.md).
 
 The [Chinese-first bilingual README](2026-11-05-bilingual-readme.md) decision
 defines the default language, language links and header presentation for both
