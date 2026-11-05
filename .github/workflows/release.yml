@@ -4,12 +4,32 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Original release tag (vMAJOR.MINOR.PATCH)"
+        required: true
+        type: string
+      source_run_id:
+        description: "Run ID containing the saved signed artifact"
+        required: true
+        type: string
+      source_run_attempt:
+        description: "Attempt number of that run"
+        required: true
+        default: "1"
+        type: string
+      submission_id:
+        description: "Existing Apple notarization submission UUID"
+        required: true
+        type: string
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -23,11 +43,15 @@ jobs:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       SIGNING_KEYCHAIN_NAME: ice-signing.keychain-db
       NOTARY_PROFILE: ice-notarization
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+      SOURCE_RUN_ATTEMPT: ${{ inputs.source_run_attempt }}
+      NOTARY_SUBMISSION_ID: ${{ inputs.submission_id }}
     defaults:
       run:
         shell: bash
     steps:
-      - name: Check out the tagged source
+      - name: Check out release workflow
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
@@ -43,7 +67,7 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Release tags must use the format vMAJOR.MINOR.PATCH."
             exit 1
           fi
@@ -52,19 +76,34 @@ jobs:
           import base64
           import os
           import re
+          import uuid
 
-          for name in ("APPLE_TEAM_ID", "APPLE_CERTIFICATE_P12_BASE64", "APPLE_CERTIFICATE_PASSWORD",
-                       "APPLE_ID", "APPLE_APP_SPECIFIC_PASSWORD"):
+          recovering = os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+          required = ["APPLE_TEAM_ID", "APPLE_ID", "APPLE_APP_SPECIFIC_PASSWORD"]
+          if not recovering:
+              required += ["APPLE_CERTIFICATE_P12_BASE64", "APPLE_CERTIFICATE_PASSWORD"]
+          for name in required:
               if not os.environ.get(name):
                   raise SystemExit(f"::error::Configure the {name} repository secret.")
           if not re.fullmatch(r"[A-Z0-9]{10}", os.environ["APPLE_TEAM_ID"]):
               raise SystemExit("::error::APPLE_TEAM_ID must contain 10 uppercase letters or digits.")
-          try:
-              certificate = base64.b64decode("".join(os.environ["APPLE_CERTIFICATE_P12_BASE64"].split()), validate=True)
-          except ValueError:
-              raise SystemExit("::error::APPLE_CERTIFICATE_P12_BASE64 must contain a base64-encoded .p12 identity.")
-          if not certificate:
-              raise SystemExit("::error::APPLE_CERTIFICATE_P12_BASE64 must contain a nonempty .p12 identity.")
+          if recovering:
+              for name in ("SOURCE_RUN_ID", "SOURCE_RUN_ATTEMPT"):
+                  if not re.fullmatch(r"[1-9][0-9]*", os.environ.get(name, "")):
+                      raise SystemExit(f"::error::{name} must be a positive integer.")
+              try:
+                  submission_id = str(uuid.UUID(os.environ.get("NOTARY_SUBMISSION_ID", "")))
+              except ValueError:
+                  raise SystemExit("::error::NOTARY_SUBMISSION_ID must be a UUID.")
+              if submission_id != os.environ["NOTARY_SUBMISSION_ID"]:
+                  raise SystemExit("::error::NOTARY_SUBMISSION_ID must use canonical UUID format.")
+          else:
+              try:
+                  certificate = base64.b64decode("".join(os.environ["APPLE_CERTIFICATE_P12_BASE64"].split()), validate=True)
+              except ValueError:
+                  raise SystemExit("::error::APPLE_CERTIFICATE_P12_BASE64 must contain a base64-encoded .p12 identity.")
+              if not certificate:
+                  raise SystemExit("::error::APPLE_CERTIFICATE_P12_BASE64 must contain a nonempty .p12 identity.")
 
           for name in ("SPARKLE_PUBLIC_ED_KEY", "SPARKLE_PRIVATE_ED_KEY"):
               try:
@@ -75,7 +114,47 @@ jobs:
                   raise SystemExit(f"::error::Configure {name} with a valid Sparkle key.")
           PY
 
+      - name: Validate recovery source
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID" > "$RUNNER_TEMP/ice-source-run.json"
+          git fetch --no-tags origin "refs/tags/$RELEASE_TAG"
+          RELEASE_COMMIT=$(git rev-parse 'FETCH_HEAD^{commit}')
+          export RELEASE_COMMIT
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          source = json.loads((Path(os.environ["RUNNER_TEMP"]) / "ice-source-run.json").read_text())
+          expected = {
+              "id": int(os.environ["SOURCE_RUN_ID"]),
+              "event": "push",
+              "path": ".github/workflows/release.yml",
+              "head_branch": os.environ["RELEASE_TAG"],
+              "head_sha": os.environ["RELEASE_COMMIT"],
+          }
+          if any(source.get(key) != value for key, value in expected.items()):
+              raise SystemExit("::error::Recovery requires this release workflow's original tag-push run at the unchanged tag commit.")
+          if source.get("repository", {}).get("full_name") != os.environ["GITHUB_REPOSITORY"]:
+              raise SystemExit("::error::Recovery source must belong to this repository.")
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              output.write(f"RELEASE_COMMIT={os.environ['RELEASE_COMMIT']}\n")
+          PY
+
+      - name: Create temporary signing keychain
+        run: |
+          keychain_password=$(openssl rand -base64 32)
+          echo "::add-mask::$keychain_password"
+          security create-keychain -p "$keychain_password" "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
+          security set-keychain-settings -lut 7200 "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
+          security unlock-keychain -p "$keychain_password" "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
+          echo "SIGNING_KEYCHAIN_PASSWORD=$keychain_password" >> "$GITHUB_ENV"
+
       - name: Import Apple signing identity
+        if: ${{ github.event_name == 'push' }}
         env:
           APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
@@ -85,15 +164,10 @@ jobs:
           trap 'rm -f "$certificate"' EXIT
           printf '%s' "$APPLE_CERTIFICATE_P12_BASE64" | base64 --decode > "$certificate"
 
-          keychain_password=$(openssl rand -base64 32)
-          echo "::add-mask::$keychain_password"
-          security create-keychain -p "$keychain_password" "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
-          security set-keychain-settings -lut 7200 "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
-          security unlock-keychain -p "$keychain_password" "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
           security import "$certificate" -k "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" \
             -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
-            -k "$keychain_password" "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" > /dev/null
+            -k "$SIGNING_KEYCHAIN_PASSWORD" "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" > /dev/null
 
           curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
             --max-time 60 https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
@@ -104,6 +178,7 @@ jobs:
           security find-identity -v -p codesigning "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" > "$RUNNER_TEMP/ice-identities.txt"
 
       - name: Validate Apple signing identity
+        if: ${{ github.event_name == 'push' }}
         run: |
           python3 - <<'PY'
           import os
@@ -131,6 +206,7 @@ jobs:
             --password "$APPLE_APP_SPECIFIC_PASSWORD" --keychain "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
 
       - name: Archive and export Ice
+        if: ${{ github.event_name == 'push' }}
         run: |
           xcodebuild -version
           # Archive/export also re-signs Sparkle's nested helpers for distribution.
@@ -144,7 +220,7 @@ jobs:
             -onlyUsePackageVersionsFromResolvedFile \
             ARCHS="arm64 x86_64" \
             ONLY_ACTIVE_ARCH=NO \
-            MARKETING_VERSION="${GITHUB_REF_NAME#v}" \
+            MARKETING_VERSION="${RELEASE_TAG#v}" \
             CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
             SPARKLE_PUBLIC_ED_KEY="$SPARKLE_PUBLIC_ED_KEY" \
             CODE_SIGN_STYLE=Manual \
@@ -168,26 +244,178 @@ jobs:
           xcodebuild -exportArchive -archivePath build/Ice.xcarchive \
             -exportOptionsPlist build/ExportOptions.plist -exportPath build/export
 
-      - name: Submit Ice for notarization
+      - name: Prepare signed release state
+        id: prepare_state
+        if: ${{ github.event_name == 'push' }}
         run: |
-          ditto -c -k --sequesterRsrc --keepParent build/export/Ice.app build/Ice-notarization.zip
-          xcrun notarytool submit build/Ice-notarization.zip \
+          mkdir -p build/release-state
+          ditto -c -k --sequesterRsrc --keepParent build/export/Ice.app build/release-state/Ice-notarization.zip
+          cp -R build/SourcePackages/artifacts/sparkle/Sparkle/bin build/release-state/sparkle-bin
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          state = Path("build/release-state")
+          metadata = {
+              "schema_version": 1,
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "tag": os.environ["RELEASE_TAG"],
+              "commit": os.environ["GITHUB_SHA"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "build_number": os.environ["GITHUB_RUN_NUMBER"],
+              "archive_sha256": hashlib.sha256((state / "Ice-notarization.zip").read_bytes()).hexdigest(),
+              "submission_id": None,
+          }
+          (state / "release.json").write_text(json.dumps(metadata, indent=2) + "\n")
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              output.write(f"RELEASE_BUILD_NUMBER={metadata['build_number']}\n")
+          PY
+
+      - name: Submit Ice for notarization
+        id: submit
+        if: ${{ github.event_name == 'push' }}
+        timeout-minutes: 5
+        run: |
+          mkdir -p build/notarization
+          xcrun notarytool submit build/release-state/Ice-notarization.zip \
             --keychain-profile "$NOTARY_PROFILE" --keychain "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" \
-            --output-format json > "$RUNNER_TEMP/ice-submission.json"
-          submission_id=$(python3 - <<'PY'
+            --output-format json > build/notarization/submission.json
+          python3 - <<'PY'
           import json
           import os
           import uuid
           from pathlib import Path
 
-          result = json.loads((Path(os.environ["RUNNER_TEMP"]) / "ice-submission.json").read_text())
-          print(uuid.UUID(result["id"]))
+          result = json.loads(Path("build/notarization/submission.json").read_text())
+          submission_id = str(uuid.UUID(result["id"]))
+          path = Path("build/release-state/release.json")
+          metadata = json.loads(path.read_text())
+          metadata["submission_id"] = submission_id
+          path.write_text(json.dumps(metadata, indent=2) + "\n")
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              output.write(f"NOTARY_SUBMISSION_ID={submission_id}\n")
+          print(f"Notarization submission: {submission_id}")
           PY
-          )
-          echo "Notarization submission: $submission_id"
-          xcrun notarytool wait "$submission_id" \
+
+      - name: Pack signed release state
+        id: pack_state
+        if: ${{ always() && steps.prepare_state.outcome == 'success' }}
+        run: tar -czf build/ice-signed.tgz -C build/release-state .
+
+      - name: Save signed release state
+        id: upload_state
+        if: ${{ always() && steps.pack_state.outcome == 'success' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ice-signed-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/ice-signed.tgz
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+      - name: Record recovery instructions
+        if: ${{ always() && steps.upload_state.outcome == 'success' }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          metadata = json.loads(Path("build/release-state/release.json").read_text())
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as output:
+              output.write("### Saved signed release\n\n")
+              output.write("Use **Release Ice > Run workflow** on the default branch to resume without rebuilding.\n\n")
+              for field, input_name in (("tag", "tag"), ("run_id", "source_run_id"),
+                                        ("run_attempt", "source_run_attempt"), ("submission_id", "submission_id")):
+                  output.write(f"- `{input_name}`: `{metadata[field]}`\n")
+              output.write("\nThe signed artifact expires after 30 days. Never publish it before notarization is Accepted.\n")
+              if metadata["submission_id"] is None:
+                  output.write("\nSubmission did not return a usable ID; this state cannot be resumed by submission ID.\n")
+          PY
+
+      - name: Download original signed release state
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ice-signed-${{ inputs.source_run_id }}-${{ inputs.source_run_attempt }}
+          path: build/recovery
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Restore original signed release state
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        run: |
+          mkdir -p build/release-state
+          tar -xzf build/recovery/ice-signed.tgz -C build/release-state
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          state = Path("build/release-state")
+          metadata = json.loads((state / "release.json").read_text())
+          expected = {
+              "schema_version": 1,
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "tag": os.environ["RELEASE_TAG"],
+              "commit": os.environ["RELEASE_COMMIT"],
+              "run_id": os.environ["SOURCE_RUN_ID"],
+              "run_attempt": os.environ["SOURCE_RUN_ATTEMPT"],
+              "submission_id": os.environ["NOTARY_SUBMISSION_ID"],
+              "archive_sha256": hashlib.sha256((state / "Ice-notarization.zip").read_bytes()).hexdigest(),
+          }
+          if any(metadata.get(key) != value for key, value in expected.items()):
+              raise SystemExit("::error::Signed artifact does not match the source run, tag, submission ID, or archive checksum.")
+          if not re.fullmatch(r"[1-9][0-9]*", str(metadata.get("build_number", ""))):
+              raise SystemExit("::error::Signed artifact has an invalid original build number.")
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              output.write(f"RELEASE_BUILD_NUMBER={metadata['build_number']}\n")
+          print(f"Restored original signed build {metadata['build_number']} for {metadata['submission_id']}.")
+          PY
+          ditto -x -k build/release-state/Ice-notarization.zip build/export
+
+      - name: Wait for notarization
+        id: wait
+        run: |
+          mkdir -p build/notarization
+          echo "Waiting up to 30 minutes for notarization: $NOTARY_SUBMISSION_ID"
+          wait_exit=0
+          xcrun notarytool wait "$NOTARY_SUBMISSION_ID" \
             --keychain-profile "$NOTARY_PROFILE" --keychain "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" \
-            --timeout 30m --output-format json > "$RUNNER_TEMP/ice-notarization.json"
+            --timeout 30m --output-format normal --progress || wait_exit=$?
+          echo "notarytool wait exit code: $wait_exit"
+
+          info_exit=0
+          xcrun notarytool info "$NOTARY_SUBMISSION_ID" \
+            --keychain-profile "$NOTARY_PROFILE" --keychain "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" \
+            --output-format json > build/notarization/result.json || info_exit=$?
+          cat build/notarization/result.json
+          if ! xcrun notarytool log "$NOTARY_SUBMISSION_ID" \
+            --keychain-profile "$NOTARY_PROFILE" --keychain "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" \
+            build/notarization/apple-log.json; then
+            echo "::warning::Apple's notarization log is not available; see the submission status above."
+          fi
+          {
+            echo "### Notarization status"
+            echo
+            echo "Submission: \`$NOTARY_SUBMISSION_ID\`; wait exit: $wait_exit; info exit: $info_exit."
+            echo '```json'
+            cat build/notarization/result.json
+            echo
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$wait_exit" == 124 ]]; then
+            echo "::error::Notarization wait timed out. Apple continues processing; resume with the saved signed artifact and this submission ID."
+          fi
+          if [[ "$wait_exit" != 0 ]]; then
+            exit "$wait_exit"
+          fi
+          exit "$info_exit"
 
       - name: Verify notarization result
         run: |
@@ -196,10 +424,10 @@ jobs:
           import os
           from pathlib import Path
 
-          result = json.loads((Path(os.environ["RUNNER_TEMP"]) / "ice-notarization.json").read_text())
+          result = json.loads(Path("build/notarization/result.json").read_text())
           print(f"Notarization submission: {result.get('id')}; status: {result.get('status')}")
-          if result.get("status") != "Accepted":
-              raise SystemExit("::error::Apple notarization must be Accepted before publishing.")
+          if result.get("id") != os.environ["NOTARY_SUBMISSION_ID"] or result.get("status") != "Accepted":
+              raise SystemExit("::error::The requested Apple notarization submission must be Accepted before publishing.")
           PY
 
       - name: Staple notarization ticket
@@ -222,7 +450,9 @@ jobs:
           xcrun stapler validate "$app"
           spctl --assess --type execute --verbose=2 "$app"
           version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app/Contents/Info.plist")
-          test "$version" = "${GITHUB_REF_NAME#v}"
+          test "$version" = "${RELEASE_TAG#v}"
+          build_number=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$app/Contents/Info.plist")
+          test "$build_number" = "$RELEASE_BUILD_NUMBER"
           feed=$(/usr/libexec/PlistBuddy -c "Print :SUFeedURL" "$app/Contents/Info.plist")
           test "$feed" = "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/appcast.xml"
           public_key=$(/usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" "$app/Contents/Info.plist")
@@ -232,13 +462,13 @@ jobs:
         env:
           SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
         run: |
-          sparkle_bin="build/SourcePackages/artifacts/sparkle/Sparkle/bin"
+          sparkle_bin="build/release-state/sparkle-bin"
           mkdir -p build/updates
           cp build/Ice.zip build/updates/Ice.zip
           printf '%s\n' "$SPARKLE_PRIVATE_ED_KEY" | "$sparkle_bin/generate_appcast" \
             --ed-key-file - \
-            --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/" \
-            --link "https://github.com/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME" \
+            --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$RELEASE_TAG/" \
+            --link "https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG" \
             --maximum-deltas 0 \
             -o build/appcast.xml build/updates
 
@@ -253,7 +483,7 @@ jobs:
           assert len(items) == 1, "Expected exactly one update"
           item = items[0]
           enclosure = item.find("enclosure")
-          expected_url = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{os.environ['GITHUB_REF_NAME']}/Ice.zip"
+          expected_url = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{os.environ['RELEASE_TAG']}/Ice.zip"
           assert enclosure is not None and enclosure.get("url") == expected_url, "Incorrect update URL"
           assert int(enclosure.get("length")) == Path("build/Ice.zip").stat().st_size, "Incorrect archive size"
           with open("build/export/Ice.app/Contents/Info.plist", "rb") as file:
@@ -273,6 +503,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
+          git fetch --no-tags origin "refs/tags/$RELEASE_TAG"
+          tag_commit=$(git rev-parse 'FETCH_HEAD^{commit}')
+          if [[ "$tag_commit" != "${RELEASE_COMMIT:-$GITHUB_SHA}" ]]; then
+            echo "::error::Release tag moved after the signed build; refusing to publish."
+            exit 1
+          fi
           cat > "$RUNNER_TEMP/ice-release-notes.md" <<'EOF'
           Download Ice.zip, unzip it, and move Ice.app into Applications.
 
@@ -283,11 +519,20 @@ jobs:
           Automatic and manual update checks use this repository's update feed.
           EOF
 
-          gh release create "$GITHUB_REF_NAME" build/Ice.zip build/appcast.xml \
+          gh release create "$RELEASE_TAG" build/Ice.zip build/appcast.xml \
             --verify-tag \
-            --title "Ice $GITHUB_REF_NAME" \
+            --title "Ice $RELEASE_TAG" \
             --generate-notes \
             --notes-file "$RUNNER_TEMP/ice-release-notes.md"
+
+      - name: Save notarization diagnostics
+        if: ${{ always() && hashFiles('build/notarization/*.json') != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ice-notarization-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build/notarization/*.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Remove signing credentials
         if: ${{ always() }}

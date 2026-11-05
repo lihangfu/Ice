@@ -155,9 +155,10 @@ Run the release guard checks locally with Python 3 and macOS's system Ruby
 python3 Tests/run-release-tests.py
 ```
 
-These checks exercise the workflow's admission scripts with fixture credentials
-and notarization results, and check its shell syntax. They do not import a real
-private key, archive an app, or contact Apple's notarization service. The release
+These checks exercise admission, timeout diagnostics, and recovery with fixture
+credentials and notarization results. System `ditto` and `tar` verify artifact
+round trips, executable permissions, and symbolic links. They do not import a real
+private key, archive a real app, or contact Apple's notarization service. The release
 job runs them before using the configured credentials.
 
 ### Publish a release
@@ -176,10 +177,11 @@ The app version comes from the tag; its build
 number comes from the GitHub Actions run number. These values are set only for the CI build.
 The Xcode archive/export workflow signs the app and Sparkle's nested helpers with
 Developer ID and enables Hardened Runtime. It submits the exported app to Apple,
-waits up to 30 minutes for notarization, requires an `Accepted` result, and staples
-the ticket before creating the final `Ice.zip`. A timeout fails the job; Apple may
-continue processing the submission. Check the submission ID in the job's logs
-before retrying a delayed submission.
+waits up to 30 minutes while displaying `notarytool` progress, then queries the
+latest status and attempts to retrieve Apple's log. The run summary includes the
+submission ID, exit codes, and status. Only an `Accepted` result allows ticket
+stapling, final `Ice.zip` generation, and publishing. A timeout fails the job;
+Apple continues processing the submission.
 
 Before publishing, the workflow extracts `Ice.zip` and checks the executable,
 both architectures, the code signature and expected Developer ID team, the
@@ -187,9 +189,54 @@ stapled ticket, Gatekeeper acceptance, the app version, and the update settings.
 It then uses the pinned Sparkle package's tools to sign the archive, generate the
 appcast, and verify the update signature and metadata.
 
-The workflow uses GitHub's `GITHUB_TOKEN` with `contents: write` permission to
-publish the release. Enable GitHub Actions in the repository's Actions tab if it
+The workflow uses GitHub's `GITHUB_TOKEN` with `contents: write` to publish and
+`actions: read` to inspect the recovery source and download its artifacts.
+Enable GitHub Actions in the repository's Actions tab if it
 is disabled.
+
+### Resume an existing notarization submission
+
+Before waiting for notarization, the initial release saves an
+`ice-signed-<run_id>-<run_attempt>` artifact for 30 days. It contains the original
+signed app archive, build number, source commit, archive SHA-256, submission ID,
+and the Sparkle tools used by that build. Submission has a five-minute limit;
+even if it fails, the workflow attempts to save the prepared signed archive.
+It contains no signing private keys or
+notarization credentials. Status responses and available Apple logs are saved
+separately as `ice-notarization-<run_id>-<run_attempt>`.
+
+After a timeout, inspect the run summary and diagnostics. To continue the same
+submission, open **Actions > Release Ice > Run workflow**, select the default
+branch containing the recovery workflow, and enter these values from the original
+run's summary:
+
+| Input | Value |
+| --- | --- |
+| `tag` | Original release tag, such as `v0.12.2` |
+| `source_run_id` | Run that first built and saved the signed artifact; its URL contains `/runs/<id>` |
+| `source_run_attempt` | Attempt that saved the artifact, usually `1` for the initial run |
+| `submission_id` | Apple notarization UUID returned by that same attempt |
+
+Recovery downloads the original artifact and verifies the repository, workflow,
+tag commit, run and attempt, submission ID, and archive checksum before waiting
+for notarization and applying the existing release checks. It does not rebuild,
+re-sign, or resubmit the app. The app and update feed retain the original build
+number. Recovery requires no `.p12` private key; it still requires notarization
+credentials, the original Apple team, and matching Sparkle update keys.
+
+If recovery times out again, use the same original run inputs. If Apple returns
+`Invalid`, use its diagnostic log to fix the issue and submit a new build.
+Expired or deleted artifacts, moved tags, and missing submission IDs fail recovery
+without falling back to a new build. Older runs that saved no signed artifact
+cannot be recovered through this entry point. The archived app has no stapled
+ticket yet and must not be distributed as a finished release.
+
+To roll back recovery support, revert the workflow and corresponding checks. This
+does not cancel submissions Apple has received or alter published releases.
+Cross-run downloads, Apple notarization, ticket stapling, and Gatekeeper acceptance
+still require validation on a real runner.
+
+### Updates and release recovery
 
 Automatic and manual update checks both read this repository's latest release's
 `appcast.xml` and download its signed `Ice.zip`.
@@ -202,7 +249,8 @@ for updates manually in the older build, then enable automatic checks and downlo
 confirm that the newer version is offered and installed.
 
 Existing releases are not overwritten. If publishing fails, inspect the release
-for a partially created draft before rerunning the job. To withdraw a bad build,
+for a partially created draft. If the saved artifact is available, use the recovery
+entry point above to avoid resubmitting the app. To withdraw a bad build,
 remove its release through GitHub; publish corrections under a new tag.
 To recover from a broken release, manually install a known-good build from this
 repository, keeping the same signing key, then publish a corrected build with a
