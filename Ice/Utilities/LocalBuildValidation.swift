@@ -97,8 +97,10 @@ enum LocalBuildValidation {
         }
         for value in ["12.345", "90", "\"invalid\""] {
             let retired = try decode("{\"wallpaperBlurRadius\":\(value),\"staticConfiguration\":{\"hasBorder\":true},\"shapeKind\":1,\"isInset\":false}")
-            try require(retired.current.hasBorder && retired.shapeKind == .full && !retired.isInset,
-                        "Retired blur setting changed other appearance settings.")
+            try require(
+                retired.current.hasBorder && retired.shapeKind == .full && !retired.isInset,
+                "Retired blur setting changed other appearance settings."
+            )
             let saved = try encoder.encode(retired)
             let object = try JSONSerialization.jsonObject(with: saved) as? [String: Any]
             try require(object != nil && object?["wallpaperBlurRadius"] == nil, "Retired blur setting was written back.")
@@ -275,8 +277,9 @@ enum LocalBuildValidation {
         for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua), ("light-restored", .aqua)] {
             window.appearance = NSAppearance(named: appearance)
             RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.25))
-            guard let screenshot = ScreenCapture.captureWindow(CGWindowID(window.windowNumber), option: [.bestResolution, .boundsIgnoreFraming]),
-                  let png = NSBitmapImageRep(cgImage: screenshot).representation(using: .png, properties: [:])
+            guard
+                let screenshot = ScreenCapture.captureWindow(CGWindowID(window.windowNumber), option: [.bestResolution, .boundsIgnoreFraming]),
+                let png = NSBitmapImageRep(cgImage: screenshot).representation(using: .png, properties: [:])
             else { throw Failure(description: "Cannot capture icon composition; screen recording access is required.") }
             try png.write(to: directory.appendingPathComponent("icons-\(name).png"))
             let pixels = NSBitmapImageRep(cgImage: screenshot)
@@ -328,8 +331,9 @@ enum LocalBuildValidation {
             for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
                 window.appearance = NSAppearance(named: appearance)
                 RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.25))
-                guard let screenshot = ScreenCapture.captureWindow(CGWindowID(window.windowNumber), option: [.bestResolution, .boundsIgnoreFraming]),
-                      let png = NSBitmapImageRep(cgImage: screenshot).representation(using: .png, properties: [:])
+                guard
+                    let screenshot = ScreenCapture.captureWindow(CGWindowID(window.windowNumber), option: [.bestResolution, .boundsIgnoreFraming]),
+                    let png = NSBitmapImageRep(cgImage: screenshot).representation(using: .png, properties: [:])
                 else { throw Failure(description: "Cannot capture live icon preview.") }
                 try png.write(to: directory.appendingPathComponent("live-icons-\(name).png"))
             }
@@ -342,8 +346,12 @@ enum LocalBuildValidation {
         let items = MenuBarItem.getMenuBarItems(onScreenOnly: true, activeSpaceOnly: true)
         guard let item = items.first else { throw Failure(description: "No status item for layout view validation.") }
         let state = AppState()
-        let window = NSWindow(contentRect: CGRect(x: 100, y: 160, width: 320, height: 80),
-                              styleMask: [.borderless], backing: .buffered, defer: false)
+        let window = NSWindow(
+            contentRect: CGRect(x: 100, y: 160, width: 320, height: 80),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
         window.isReleasedWhenClosed = false
         window.backgroundColor = .windowBackgroundColor
         let root = NSView(frame: CGRect(x: 0, y: 0, width: 320, height: 80))
@@ -375,8 +383,9 @@ enum LocalBuildValidation {
             return color
         }
         func save(_ name: String) throws {
-            guard let image = ScreenCapture.captureWindow(CGWindowID(window.windowNumber), option: [.bestResolution, .boundsIgnoreFraming]),
-                  let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+            guard
+                let image = ScreenCapture.captureWindow(CGWindowID(window.windowNumber), option: [.bestResolution, .boundsIgnoreFraming]),
+                let data = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
             else { throw Failure(description: "Cannot capture layout preview.") }
             try data.write(to: directory.appendingPathComponent(name + ".png"))
         }
@@ -387,12 +396,15 @@ enum LocalBuildValidation {
             for view in views.prefix(3) {
                 let color = try sample(view, x: 10, y: 16)
                 let lightness = (color.redComponent + color.greenComponent + color.blueComponent) / 3
-                try require(appearance == .darkAqua ? lightness > 0.8 : lightness < 0.3,
-                            "Layout monochrome icon did not follow \(name) appearance.")
+                try require(
+                    appearance == .darkAqua ? lightness > 0.8 : lightness < 0.3,
+                    "Layout monochrome icon did not follow \(name) appearance."
+                )
                 let cutout = try sample(view, x: 16, y: 16)
                 try require(cutout.alphaComponent == 0, "Layout icon cutout became opaque.")
-                guard let draggingImage = view.displayedImage?.cgImage(forProposedRect: nil, context: nil, hints: nil),
-                      let dragColor = NSBitmapImageRep(cgImage: draggingImage).colorAt(x: draggingImage.width * 10 / 32, y: draggingImage.height / 2)?.usingColorSpace(.sRGB)
+                guard
+                    let draggingImage = view.displayedImage?.cgImage(forProposedRect: nil, context: nil, hints: nil),
+                    let dragColor = NSBitmapImageRep(cgImage: draggingImage).colorAt(x: draggingImage.width * 10 / 32, y: draggingImage.height / 2)?.usingColorSpace(.sRGB)
                 else { throw Failure(description: "Missing themed dragging image.") }
                 try require(abs(dragColor.redComponent - color.redComponent) < 0.05, "Dragging image differs from layout icon.")
                 try require(root.hitTest(CGPoint(x: view.frame.midX, y: view.frame.midY)) === view, "Icon adaptation intercepted layout hit testing.")
@@ -404,8 +416,10 @@ enum LocalBuildValidation {
         let enabled = try sample(testView, x: 10, y: 16)
         testView.isEnabled = false
         let disabled = try sample(testView, x: 10, y: 16)
-        try require(enabled.alphaComponent > 0.5 && abs(disabled.alphaComponent / enabled.alphaComponent - 0.67) < 0.03,
-                    "Disabled layout icon lost its dimming relative to the system label color.")
+        try require(
+            enabled.alphaComponent > 0.5 && abs(disabled.alphaComponent / enabled.alphaComponent - 0.67) < 0.03,
+            "Disabled layout icon lost its dimming relative to the system label color."
+        )
         let frame = testView.frame
         testView.isDraggingPlaceholder = true
         let placeholder = try sample(testView, x: 10, y: 16)

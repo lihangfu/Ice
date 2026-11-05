@@ -38,7 +38,7 @@ enum MenuBarIconAppearance {
                 let offset = (y * width + x) * 4
                 let alpha = Double(pixels[offset + 3]) / 255
                 // A transparent perimeter prevents opaque tiles from becoming solid rectangles.
-                if (x == 0 || y == 0 || x == width - 1 || y == height - 1), alpha > 0.03 {
+                if x == 0 || y == 0 || x == width - 1 || y == height - 1, alpha > 0.03 {
                     return nil
                 }
                 guard alpha >= 0.08 else { continue }
