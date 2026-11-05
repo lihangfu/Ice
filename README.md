@@ -1,122 +1,80 @@
 <div align="center">
-    <img src="Ice/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width=200 height=200>
+    <img src="Ice/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" alt="Ice" width="200" height="200">
     <h1>Ice</h1>
+    <p><strong>简体中文</strong> · <a href="README.en.md">English</a></p>
+    <p>Ice 是一款适用于 macOS 14 及更高版本的菜单栏管理工具。</p>
+    <p>本项目基于 <a href="https://github.com/jordanbaird/Ice">jordanbaird/Ice</a>，由本仓库独立维护。</p>
+    <p>
+        <a href="https://github.com/lihangfu/Ice/releases/latest"><img src="https://img.shields.io/badge/download-latest-brightgreen?style=flat-square" alt="下载"></a>
+        <img src="https://img.shields.io/badge/platform-macOS-blue?style=flat-square" alt="平台">
+        <img src="https://img.shields.io/badge/requirements-macOS%2014%2B-fa4e49?style=flat-square" alt="系统要求">
+        <a href="LICENSE"><img src="https://img.shields.io/github/license/lihangfu/Ice?style=flat-square" alt="许可证"></a>
+    </p>
 </div>
 
-Ice is a menu bar management tool for macOS 14 and later.
+## 安装
 
-This project is based on [jordanbaird/Ice](https://github.com/jordanbaird/Ice)
-and is developed independently.
+从[最新发行版](https://github.com/lihangfu/Ice/releases/latest)下载 `Ice.zip`，解压后将应用移入“应用程序”（`Applications`）文件夹。
 
-[![Download](https://img.shields.io/badge/download-latest-brightgreen?style=flat-square)](https://github.com/lihangfu/Ice/releases/latest)
-![Platform](https://img.shields.io/badge/platform-macOS-blue?style=flat-square)
-![Requirements](https://img.shields.io/badge/requirements-macOS%2014%2B-fa4e49?style=flat-square)
-[![License](https://img.shields.io/github/license/lihangfu/Ice?style=flat-square)](LICENSE)
+## 无需 Xcode，在本地构建和运行
 
-## Install
-
-Download the "Ice.zip" file from the [latest release](https://github.com/lihangfu/Ice/releases/latest) and move the unzipped app into your `Applications` folder.
-
-## Build and run locally without Xcode
-
-Requires macOS 14 or later and Command Line Tools with Swift 6 or later. Install
-Apple's tools with `xcode-select --install` if needed. Full Xcode is not required.
-The first build needs network access to download the dependencies pinned by the
-existing Xcode `Package.resolved`; later builds reuse the SwiftPM cache.
+需要 macOS 14 或更高版本，以及包含 Swift 6 或更高版本的 Command Line Tools（命令行工具）。如未安装，可运行 `xcode-select --install`。无需安装完整的 Xcode。首次构建需要联网下载现有 Xcode `Package.resolved` 锁定的依赖，后续构建会复用 SwiftPM 缓存。
 
 ```sh
 ./scripts/run-app.sh
 ```
 
-This builds the current source for your Mac's architecture, packages and locally
-signs `build/Ice.app`, then opens it. Quit a running `build/Ice.app` before rebuilding.
-To build without launching, or to make an optimized local build:
+该命令会按当前 Mac 的架构构建源码，打包并本地签名 `build/Ice.app`，然后启动应用。重新构建前，请先退出正在运行的 `build/Ice.app`。如需只构建而不启动，或构建经过优化的本地版本：
 
 ```sh
 ./scripts/build-app.sh
 ./scripts/build-app.sh release
 ```
 
-Use the packaged `.app`, not `swift run`: Ice needs its bundle metadata, icons,
-translations and embedded Sparkle framework. The scripts use Python 3 supplied
-with Command Line Tools and built-in macOS packaging tools. They don't install or
-replace `/Applications/Ice.app`. The local app shares Ice's bundle identifier and
-preferences; macOS may ask you to grant Accessibility and Screen Recording again
-for the locally signed binary. Quit any other Ice instance before using it.
+请使用打包后的 `.app`，不要使用 `swift run`：Ice 需要应用包中的元数据、图标、翻译和内嵌的 Sparkle 框架。脚本使用 Command Line Tools 提供的 Python 3 和 macOS 内置打包工具，不会安装或替换 `/Applications/Ice.app`。本地应用与 Ice 共用 bundle identifier（应用包标识符）和偏好设置；macOS 可能要求你为本地签名的应用重新授予辅助功能和屏幕录制权限。使用前请退出其他 Ice 实例。
 
-Local builds disable online updates so a release cannot replace your development
-app. They use ad-hoc signing and are not notarized. Distribution continues to use
-the Xcode release workflow below, including its update-signing key.
+本地构建会禁用在线更新，避免发行版替换开发中的应用。本地构建采用临时签名（ad-hoc），未经 Apple 公证。对外分发仍使用下文的 Xcode 发布工作流及其更新签名密钥。
 
-After building, verify the real bundle and localization:
+构建完成后，验证实际应用包和本地化资源：
 
 ```sh
 python3 Tests/run-build-tests.py
 bash Tests/run-localization-tests.sh
 ```
 
-The bundle check runs the actual executable before migrations or permission
-requests. It verifies assets, image scales, light/dark colors, translations,
-metadata, signature and relocation, and checks that missing resources fail.
-It also checks legacy appearance migration. It does not exercise menu bar
-manipulation or grant macOS permissions. To render the appearance editor and
-general settings content at small, medium, and large sidebar sizes in both themes,
-and verify Ice Bar appearance and icons:
+应用包检查会在迁移或请求权限之前运行真实可执行文件，验证资源、图片缩放、浅色和深色配色、翻译、元数据、签名及应用包移动后的行为，并确认缺失资源时会失败。它还会检查旧版外观设置的迁移，但不会操作菜单栏项目或授予 macOS 权限。如需在两种系统主题下，以小、中、大三种侧边栏尺寸渲染外观编辑器和通用设置内容，并验证 Ice Bar 的外观与图标：
 
 ```sh
 build/Ice.app/Contents/MacOS/Ice --validate-appearance build/appearance-validation
 ```
 
-These are component checks, not settings-window chrome acceptance. Validate the
-production SwiftUI settings scene separately:
+这些检查覆盖组件，不能作为设置窗口标题栏及边框的验收依据。请单独验证实际使用的 SwiftUI 设置场景：
 
 ```sh
 build/Ice.app/Contents/MacOS/Ice --validate-settings-scene build/settings-scene-validation
 ```
 
-This opens the real settings window after scene startup, skips migrations,
-permission requests and normal menu bar setup, and uses the default settings model.
-It captures all six panes in light/dark, scroll and return-to-top states, wide windows
-and shrinking back to minimum width. It checks that scrolling does not repaint the
-sidebar titlebar and that the window geometry observer cancels and restores its
-configuration when detached. Appearance, frame and pane are restored before exit.
-`scene-properties.json` records native toolbar geometry and actual activation state;
-material activity is not forced. Other macOS versions and accessibility preferences
-still need manual checks.
+该命令会在场景启动后打开真实设置窗口，跳过迁移、权限请求和正常的菜单栏初始化，并使用默认设置模型。它会截取全部六个分页在浅色和深色、滚动及回顶、宽窗口和缩回最小宽度时的状态；检查滚动不会重绘侧栏标题区，并验证窗口几何观察器在脱离窗口时会取消观察并恢复配置。退出前会恢复外观、窗口位置与尺寸和当前分页。
 
-For negative controls, append `--opaque-settings-window-control` to re-enable
-the retired window-wide opacity flag, or `--compact-settings-toolbar-control` for
-the wrong toolbar configuration. Both are expected to exit unsuccessfully.
-The retired `--original-settings-titlebar-control` reports this replacement entry.
+`scene-properties.json` 记录原生工具栏几何和实际激活状态，不会强制材质进入活动状态。其他 macOS 版本和辅助功能偏好仍需人工检查。
 
-The appearance validation also checks monochrome icon rendering, colored badge
-preservation and transparent cutouts, and captures live status item comparisons.
-The settings layout checks also cover native drawing, drag preview colors,
-disabled-item dimming, hit testing and placeholder geometry without moving menu
-items. These icon captures require screen recording access. To verify that the contrast
-check catches the original white-on-light failure, run the negative control
-(expected to exit unsuccessfully):
+负向对照可追加 `--opaque-settings-window-control`，重新启用已移除的全窗口不透明标志，或追加 `--compact-settings-toolbar-control`，使用错误的工具栏配置。两者均预期以失败状态退出。已停用的 `--original-settings-titlebar-control` 会提示使用替代入口。
+
+外观验证还会检查单色图标渲染、彩色角标保留和透明镂空，并截取实时状态栏项目作对比。设置布局检查还涵盖原生绘制、拖动预览颜色、禁用项目的淡化、点击命中和占位区域，且不会移动菜单栏项目。图标截图需要屏幕录制权限。如需确认对比度检查能捕获原先的浅色背景白色图标问题，请运行负向对照，预期该命令以失败状态退出：
 
 ```sh
 build/Ice.app/Contents/MacOS/Ice --validate-appearance build/icon-negative --original-ice-bar-icons-control
 ```
 
-For the equivalent settings layout negative control, use
-`--original-layout-icons-control` instead.
+设置布局的等效负向对照使用 `--original-layout-icons-control` 参数。
 
-## Releasing
+## 发布
 
-The [Release Ice workflow](.github/workflows/release.yml) builds and publishes
-`Ice.zip` and an `appcast.xml` containing its update signature to the repository
-where the tag is pushed. Releases for this project are published to
-[lihangfu/Ice](https://github.com/lihangfu/Ice/releases).
+[Release Ice 工作流](.github/workflows/release.yml)会构建并发布 `Ice.zip`，以及包含更新签名的 `appcast.xml`，目标是标签推送到的仓库。本项目的发行版发布在 [lihangfu/Ice](https://github.com/lihangfu/Ice/releases)。
 
-### One-time update signing setup
+### 首次配置更新签名
 
-Sparkle requires a free Ed25519 update-signing key pair in addition to the Apple
-signing identity below. Using the tools in the
-[Sparkle 2.6.4 distribution](https://github.com/sparkle-project/Sparkle/releases/tag/2.6.4),
-run these commands from the extracted distribution directory:
+除了下文的 Apple 签名身份，Sparkle 还需要一对可免费生成的 Ed25519 更新签名密钥。下载并解压 [Sparkle 2.6.4](https://github.com/sparkle-project/Sparkle/releases/tag/2.6.4)，在解压后的目录中运行：
 
 ```sh
 umask 077
@@ -125,177 +83,118 @@ umask 077
 ./bin/generate_keys --account lihangfu-Ice -x "$HOME/ice-sparkle-private-key.txt"
 ```
 
-In the repository's **Settings > Secrets and variables > Actions**, configure:
+在仓库的 **Settings > Secrets and variables > Actions** 中配置：
 
-- Repository variable `SPARKLE_PUBLIC_ED_KEY`: the public key printed by `-p`.
-- Repository secret `SPARKLE_PRIVATE_ED_KEY`: the contents of the exported private-key file.
+- 仓库变量 `SPARKLE_PUBLIC_ED_KEY`：`-p` 打印的公钥。
+- 仓库密钥 `SPARKLE_PRIVATE_ED_KEY`：导出的私钥文件内容。
 
-Keep the private key backed up securely and outside this repository. Reuse this
-key pair for future releases; changing it can prevent installed builds from
-updating. Local builds must also pass `SPARKLE_PUBLIC_ED_KEY` to `xcodebuild`.
-The workflow checks for missing keys before building and refuses to publish an
-unsigned update archive or a feed generated with mismatched keys.
+请将私钥安全备份在仓库之外。后续发布应复用同一密钥对；更换密钥可能导致已安装的应用无法更新。使用 `xcodebuild` 进行本地构建时，也必须传入 `SPARKLE_PUBLIC_ED_KEY`。工作流会在构建前检查密钥是否缺失，并拒绝发布未签名的更新压缩包或由不匹配密钥生成的更新源。
 
-### One-time Apple signing and notarization setup
+### 首次配置 Apple 签名与公证
 
-An active Apple Developer Program membership and a Developer ID Application
-certificate with its private key are required. In Keychain Access, export the
-identity from **login > My Certificates** as a password-protected `.p12` file.
-Keep it outside this repository. Convert it to Base64 with
-`base64 -i /path/to/ice-signing.p12 | pbcopy` and configure these repository
-**Secrets** in **Settings > Secrets and variables > Actions**:
+需要有效的 Apple Developer Program 会员资格，以及包含私钥的 Developer ID Application 证书。在“钥匙串访问”的 **login > My Certificates** 中，将签名身份导出为受密码保护的 `.p12` 文件，并保存在仓库之外。运行 `base64 -i /path/to/ice-signing.p12 | pbcopy` 将其转换为 Base64，然后在仓库 **Settings > Secrets and variables > Actions** 中配置以下 **Secrets**：
 
-| Secret | Value |
+| 密钥 | 值 |
 | --- | --- |
-| `APPLE_CERTIFICATE_P12_BASE64` | Base64-encoded `.p12` containing the certificate and private key |
-| `APPLE_CERTIFICATE_PASSWORD` | Password used when exporting the `.p12` |
-| `APPLE_TEAM_ID` | The certificate's 10-character Apple Developer Team ID |
-| `APPLE_ID` | Apple Account used for notarization, with access to that team |
-| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password generated at [Apple Account](https://account.apple.com/) |
+| `APPLE_CERTIFICATE_P12_BASE64` | 包含证书和私钥的 `.p12` 文件的 Base64 编码 |
+| `APPLE_CERTIFICATE_PASSWORD` | 导出 `.p12` 时设置的密码 |
+| `APPLE_TEAM_ID` | 证书所属的 10 位 Apple Developer Team ID |
+| `APPLE_ID` | 用于公证、且有权访问该团队的 Apple 账户 |
+| `APPLE_APP_SPECIFIC_PASSWORD` | 在 [Apple 账户](https://account.apple.com/)中生成的应用专用密码 |
 
-The workflow imports the identity and Apple's Developer ID G2 intermediate
-certificate into a temporary keychain on the GitHub-hosted runner. It requires
-exactly one valid Developer ID Application identity for the configured team and
-validates notarization credentials before building. The `.p12` file is removed
-after import; the keychain, including its notarization credentials, is deleted
-when the job finishes, including on failure. Missing or invalid credentials fail
-the release; there is no unsigned publishing fallback.
+工作流会将签名身份和 Apple Developer ID G2 中间证书导入 GitHub 托管 runner 的临时钥匙串。配置的团队必须恰好有一个有效的 Developer ID Application 签名身份；工作流会在构建前验证公证凭据。`.p12` 文件在导入后删除，钥匙串及其中的公证凭据会在任务结束时删除，失败时也会清理。凭据缺失或无效会导致发布失败，不会退回到无签名发布。
 
-Run the release guard checks locally with Python 3 and macOS's system Ruby
-(using its bundled YAML and JSON libraries; no Python packages are required):
+可使用 Python 3 和 macOS 系统 Ruby 在本地运行发布检查。检查使用 Ruby 内置的 YAML 和 JSON 库，无需安装 Python 包：
 
 ```sh
 python3 Tests/run-release-tests.py
 ```
 
-These checks exercise the workflow's admission scripts with fixture credentials
-and notarization results, and check its shell syntax. They do not import a real
-private key, archive an app, or contact Apple's notarization service. The release
-job runs them before using the configured credentials.
+这些检查使用虚构凭据和公证结果执行工作流的准入脚本，并检查 shell 语法。它们不会导入真实私钥、归档应用或连接 Apple 公证服务。发布任务会在使用实际配置的凭据之前运行这些检查。
 
-### Publish a release
+### 发布新版本
 
-Commit and push the workflow before creating a release tag. The tagged commit
-must contain the workflow. Use a new tag in the format `vMAJOR.MINOR.PATCH`:
+创建发布标签前，请先提交并推送工作流，确保标签指向的提交包含该工作流。新标签格式为 `vMAJOR.MINOR.PATCH`，例如：
 
 ```sh
 git tag v0.11.15
 git push origin v0.11.15
 ```
 
-The release job uses GitHub's standard macOS 15 Intel runner (`macos-15-intel`)
-with Xcode 16.4 to archive and export a Release app for both Apple Silicon and Intel Macs.
-The app version comes from the tag; its build
-number comes from the GitHub Actions run number. These values are set only for the CI build.
-The Xcode archive/export workflow signs the app and Sparkle's nested helpers with
-Developer ID and enables Hardened Runtime. It submits the exported app to Apple,
-waits up to 30 minutes for notarization, requires an `Accepted` result, and staples
-the ticket before creating the final `Ice.zip`. A timeout fails the job; Apple may
-continue processing the submission. Check the submission ID in the job's logs
-before retrying a delayed submission.
+发布任务使用 GitHub 标准 macOS 15 Intel runner（`macos-15-intel`）和 Xcode 16.4，为 Apple Silicon 与 Intel Mac 归档并导出 Release 应用。应用版本来自标签，构建号来自 GitHub Actions 运行编号，仅在 CI 构建中设置。
 
-Before publishing, the workflow extracts `Ice.zip` and checks the executable,
-both architectures, the code signature and expected Developer ID team, the
-stapled ticket, Gatekeeper acceptance, the app version, and the update settings.
-It then uses the pinned Sparkle package's tools to sign the archive, generate the
-appcast, and verify the update signature and metadata.
+Xcode 归档与导出工作流会使用 Developer ID 对应用及 Sparkle 内嵌辅助程序签名，并启用 Hardened Runtime（强化运行时）。工作流会将导出的应用提交给 Apple，最多等待 30 分钟，要求公证结果为 `Accepted`，并在生成最终 `Ice.zip` 前附加公证票据。超时会导致任务失败，但 Apple 可能仍在处理该提交。重试延迟的提交之前，请先查看任务日志中的提交 ID。
 
-The workflow uses GitHub's `GITHUB_TOKEN` with `contents: write` permission to
-publish the release. Enable GitHub Actions in the repository's Actions tab if it
-is disabled.
+发布前，工作流会解压 `Ice.zip`，检查可执行文件、两种架构、代码签名和预期的 Developer ID 团队、公证票据、Gatekeeper 验收结果、应用版本和更新设置。随后使用锁定版本的 Sparkle 工具为压缩包签名、生成 appcast，并验证更新签名和元数据。
 
-Automatic and manual update checks both read this repository's latest release's
-`appcast.xml` and download its signed `Ice.zip`.
-Changing from ad-hoc to Developer ID signing may require users to grant
-Accessibility and Screen Recording access again.
+工作流使用具有 `contents: write` 权限的 GitHub `GITHUB_TOKEN` 发布发行版。如果仓库尚未启用 GitHub Actions，请在 Actions 页面启用。
 
-Install a release manually if the installed app uses a different update feed or
-signing key. To test the feed, use two Release builds from this repository: check
-for updates manually in the older build, then enable automatic checks and downloads and
-confirm that the newer version is offered and installed.
+自动和手动更新检查均读取本仓库最新发行版中的 `appcast.xml`，并下载已签名的 `Ice.zip`。从临时签名切换到 Developer ID 签名后，用户可能需要重新授予辅助功能和屏幕录制权限。
 
-Existing releases are not overwritten. If publishing fails, inspect the release
-for a partially created draft before rerunning the job. To withdraw a bad build,
-remove its release through GitHub; publish corrections under a new tag.
-To recover from a broken release, manually install a known-good build from this
-repository, keeping the same signing key, then publish a corrected build with a
-higher build number. A source rollback alone does not change already installed apps.
-To roll back this signing integration, revert the workflow change before creating
-a new tag; older workflow revisions produce ad-hoc builds without notarization.
-Rotate the `.p12` secrets before the Developer ID certificate expires, keeping the
-same team and Sparkle update-signing key. An Apple identity change does not replace
-Sparkle's update-signing key.
+如果已安装的应用使用不同的更新源或签名密钥，请手动安装本仓库的发行版。验证更新源时，使用本仓库的两个 Release 构建：先在旧版中手动检查更新，再启用自动检查和下载，确认新版会被提示并成功安装。
 
-## Features
+工作流不会覆盖已有发行版。若发布失败，请先检查是否已创建不完整的草稿，再重新运行任务。如需撤回有问题的构建，请通过 GitHub 删除对应发行版，并使用新标签发布修正版。
 
-Settings show contextual explanations behind the circled question mark next to
-each relevant setting's name. Hover to read the explanation, or activate the help
-button with a click or keyboard to open it in a popover. Operational warnings and
-status messages remain visible in the settings page.
+如果发行版有问题，请手动安装本仓库已知可用的构建，保留同一签名密钥，再发布构建号更高的修正版。仅回退源码不会改变已安装的应用。如需回退此签名集成，请在创建新标签前回退工作流变更；旧版工作流会生成未经公证的临时签名构建。
 
-### Menu bar item management
+请在 Developer ID 证书过期前轮换 `.p12` 密钥配置，保留同一团队和 Sparkle 更新签名密钥。Apple 签名身份的更换不能替代 Sparkle 更新签名密钥。
 
-- Hide menu bar items
-- "Always-hidden" menu bar section
-- Show hidden menu bar items when hovering over the menu bar
-- Show hidden menu bar items when an empty area in the menu bar is clicked
-- Show hidden menu bar items by scrolling or swiping in the menu bar
-- Automatically rehide menu bar items
-- Hide application menus when they overlap with shown menu bar items
-- Drag and drop interface to arrange individual menu bar items
-- Display hidden menu bar items in a separate bar (e.g. for MacBooks with the notch)
-- Search menu bar items
-- Menu bar item spacing (BETA)
+## 功能
 
-### Menu bar appearance
+设置项名称旁的圆形问号提供相关说明。悬停可阅读，点击或通过键盘激活帮助按钮可打开弹出说明。操作警告和状态信息会直接显示在设置页面中。
 
-- Menu bar tint (solid and gradient)
-- Menu bar shadow
-- Menu bar border
-- Custom menu bar shapes (rounded and/or split)
+### 菜单栏项目管理
 
-### Hotkeys
+- 隐藏菜单栏项目
+- 提供“始终隐藏”区域
+- 鼠标悬停在菜单栏时显示隐藏项目
+- 点击菜单栏空白区域时显示隐藏项目
+- 在菜单栏中滚动或轻扫时显示隐藏项目
+- 自动重新隐藏菜单栏项目
+- 当应用菜单与已显示的菜单栏项目重叠时隐藏应用菜单
+- 通过拖放排列各个菜单栏项目
+- 在独立的 Ice Bar 中显示隐藏项目，适用于带刘海屏的 MacBook 等设备
+- 搜索菜单栏项目
+- 调整菜单栏项目间距（测试版）
 
-- Toggle individual menu bar sections
-- Show the search panel
-- Enable/disable the Ice Bar
-- Show/hide section divider icons
-- Toggle application menus
+### 菜单栏外观
 
-### Other
+- 菜单栏着色，支持纯色和渐变
+- 菜单栏阴影
+- 菜单栏边框
+- 自定义菜单栏形状，支持圆角、分段或两者组合
 
-- Launch at login
-- Automatic updates
+### 快捷键
 
-## Why does Ice only support macOS 14 and later?
+- 切换各个菜单栏区域的显示状态
+- 显示搜索面板
+- 启用或禁用 Ice Bar
+- 显示或隐藏区域分隔图标
+- 切换应用菜单的显示状态
 
-Ice uses system APIs that are available starting in macOS 14.
+### 其他
 
-## Appearance
+- 登录时启动
+- 自动更新
 
-### Ice Bar and menu bar layout
+## 为什么 Ice 仅支持 macOS 14 及更高版本？
 
-The Ice Bar uses a native frosted background that blurs the windows behind it
-while keeping menu bar icons sharp. It respects macOS Reduce Transparency,
-which replaces the blur with a solid background. Monochrome icons with transparent
-backgrounds adapt to the system light/dark appearance. Colored or ambiguous
-captures keep their original colors, including mixed icons with status badges.
-This adaptation applies to Ice Bar and the visible, hidden, and always-hidden
-sections in settings. Drag previews use the same themed colors. Search results
-keep the originals.
+Ice 使用了从 macOS 14 开始提供的系统 API。
 
-### Menu bar customization
+## 外观
 
-Tint, shadow, border and shape use one shared configuration in both system
-appearances. When upgrading from dynamic appearance settings, Ice preserves
-the configuration active at the first launch and uses it for subsequent launches.
-The separate light/dark editors and preview controls are no longer available.
+### Ice Bar 与菜单栏布局
 
-Menu bar background blur customization is no longer provided. Existing blur
-strength settings are ignored and omitted when appearance settings are saved.
-Tint, shadow, border and shape settings remain available. Ice Bar continues to
-use its native frosted background, following the system light/dark appearance.
+Ice Bar 使用原生磨砂背景，模糊后方窗口的同时保持菜单栏图标清晰。它遵循 macOS 的“降低透明度”设置；开启后，模糊效果会替换为纯色背景。具有透明背景的单色图标会适应系统浅色和深色外观。彩色图标或无法明确判断的截图会保留原色，包括带有彩色状态角标的混合图标。
 
-## License
+这项适配同时用于 Ice Bar，以及设置中的可见、隐藏和始终隐藏区域。拖动预览使用相同的主题颜色，搜索结果保留原始图标。
 
-Ice is available under the [GPL-3.0 license](LICENSE).
+### 菜单栏自定义
+
+着色、阴影、边框和形状在两种系统外观下共用一份配置。从动态外观设置升级时，Ice 会保留首次启动时生效的配置，并用于后续启动。独立的浅色和深色编辑器及预览控件已移除。
+
+菜单栏背景模糊自定义功能已移除。已有的模糊强度设置会被忽略，并在保存外观设置时省略。着色、阴影、边框和形状设置仍可使用。Ice Bar 继续使用原生磨砂背景，并随系统浅色和深色外观变化。
+
+## 许可证
+
+Ice 基于 [GPL-3.0 许可证](LICENSE)发布。

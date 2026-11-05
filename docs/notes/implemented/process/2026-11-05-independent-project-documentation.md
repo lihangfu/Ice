@@ -32,3 +32,7 @@ The GPL license, existing copyright notices and third-party acknowledgements
 remain. The bundle identifier is retained for installation compatibility.
 Future screenshots and roadmap entries need evidence or decisions from this
 project. Build and release instructions remain owned by README.
+
+The [Chinese-first bilingual README](2026-11-05-bilingual-readme.md) decision
+defines the default language, language links and header presentation for both
+README versions.
