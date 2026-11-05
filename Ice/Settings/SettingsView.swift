@@ -8,6 +8,10 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var navigationState: AppNavigationState
     @Environment(\.sidebarRowSize) var sidebarRowSize
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.settingsTitlebarHeight) private var titlebarHeight
+    @State private var contentLeading = SettingsContentLayout.horizontalPadding
+    @State private var contentIsScrolled = false
 
     private var sidebarWidth: CGFloat {
         switch sidebarRowSize {
@@ -37,15 +41,38 @@ struct SettingsView: View {
     }
 
     var body: some View {
+        if #available(macOS 15.0, *) {
+            settingsView.toolbar(removing: .title)
+        } else {
+            settingsView
+        }
+    }
+
+    private var settingsView: some View {
         NavigationSplitView {
             sidebar
         } detail: {
             detailView
                 .environment(\.iceFormStyle, .settings)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .windowBackgroundColor))
+                .background(SettingsPalette.background(for: colorScheme).ignoresSafeArea())
+                .coordinateSpace(name: SettingsContentLayout.coordinateSpace)
+                .onPreferenceChange(SettingsContentLeadingKey.self) { contentLeading = $0 }
+                .onPreferenceChange(SettingsContentScrolledKey.self) { contentIsScrolled = $0 }
+                .overlay(alignment: .top) {
+                    if titlebarHeight > 0 {
+                        SettingsTitlebar(
+                            title: navigationState.settingsNavigationIdentifier.localized,
+                            height: titlebarHeight,
+                            leading: contentLeading,
+                            isScrolled: contentIsScrolled
+                        )
+                        .offset(y: -titlebarHeight)
+                    }
+                }
         }
         .navigationTitle(navigationState.settingsNavigationIdentifier.localized)
+        .toolbarBackground(.hidden, for: .windowToolbar)
     }
 
     @ViewBuilder
@@ -57,6 +84,7 @@ struct SettingsView: View {
             }
         }
         .listStyle(.sidebar)
+        .scrollContentBackground(colorScheme == .light ? .hidden : .automatic)
         .safeAreaInset(edge: .top, spacing: 8) {
             HStack(spacing: 10) {
                 SettingsPaneIcon(identifier: .about, size: 28)
@@ -71,6 +99,11 @@ struct SettingsView: View {
         }
         .removeSidebarToggle()
         .navigationSplitViewColumnWidth(sidebarWidth)
+        .background {
+            if colorScheme == .light {
+                SettingsPalette.lightSidebar.ignoresSafeArea()
+            }
+        }
     }
 
     @ViewBuilder

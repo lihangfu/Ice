@@ -45,7 +45,7 @@ struct IceForm<Content: View>: View {
 
     init(
         alignment: HorizontalAlignment = .center,
-        padding: CGFloat = 20,
+        padding: CGFloat = SettingsContentLayout.horizontalPadding,
         spacing: CGFloat = 10,
         @ViewBuilder content: () -> Content
     ) {
@@ -64,6 +64,7 @@ struct IceForm<Content: View>: View {
                 contentStack
             }
             .scrollContentBackground(.hidden)
+            .scrollClipDisabled()
         } else if isScrollEnabled {
             GeometryReader { geometry in
                 if contentFrame.height > geometry.size.height {
@@ -86,8 +87,28 @@ struct IceForm<Content: View>: View {
             content
                 .toggleStyle(IceFormToggleStyle())
         }
-        .frame(maxWidth: style == .settings ? 720 : nil)
+        .frame(maxWidth: style == .settings ? SettingsContentLayout.maximumWidth : nil)
+        .background {
+            if style == .settings {
+                GeometryReader { geometry in
+                    Color.clear.preference(
+                        key: SettingsContentLeadingKey.self,
+                        value: geometry.frame(in: .named(SettingsContentLayout.coordinateSpace)).minX
+                    )
+                }
+            }
+        }
         .padding(padding)
+        .background {
+            if style == .settings {
+                GeometryReader { geometry in
+                    Color.clear.preference(
+                        key: SettingsContentScrolledKey.self,
+                        value: geometry.frame(in: .named(SettingsContentLayout.coordinateSpace)).minY < -0.5
+                    )
+                }
+            }
+        }
         .frame(maxWidth: style == .settings ? .infinity : nil, alignment: .top)
         .onFrameChange(update: $contentFrame)
     }

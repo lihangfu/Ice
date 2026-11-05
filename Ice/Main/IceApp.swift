@@ -24,6 +24,12 @@ struct IceApp: App {
         #endif
         appState = AppState()
         NSSplitViewItem.swizzle()
+        #if SWIFT_PACKAGE
+        if SettingsSceneValidation.isRequested {
+            appDelegate.assignAppState(appState)
+            return
+        }
+        #endif
         MigrationManager.migrateAll(appState: appState)
         appDelegate.assignAppState(appState)
     }

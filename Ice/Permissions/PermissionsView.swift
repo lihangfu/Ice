@@ -8,6 +8,7 @@ import SwiftUI
 struct PermissionsView: View {
     @EnvironmentObject var permissionsManager: PermissionsManager
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -49,7 +50,7 @@ struct PermissionsView: View {
         .padding(32)
         .frame(width: 620)
         .fixedSize(horizontal: false, vertical: true)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(SettingsPalette.background(for: colorScheme))
         .environment(\.iceFormStyle, .settings)
     }
 

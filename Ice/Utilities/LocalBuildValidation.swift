@@ -114,6 +114,10 @@ enum LocalBuildValidation {
 
     @MainActor
     static func renderAppearance(to directory: URL) -> Int32 {
+        if CommandLine.arguments.contains("--original-settings-titlebar-control") {
+            FileHandle.standardError.write(Data("Use --validate-settings-scene OUTPUT_DIRECTORY --opaque-settings-window-control for the titlebar negative control.\n".utf8))
+            return 2
+        }
         do {
             try validateAppearanceConfiguration()
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -124,8 +128,7 @@ enum LocalBuildValidation {
                 .environmentObject(state.appearanceManager)
                 .environment(\.iceFormStyle, .settings)
                 .environment(\.locale, Locale(identifier: "zh-Hans"))
-                .background(Color(nsColor: .windowBackgroundColor))
-            let host = NSHostingView(rootView: content)
+            let host = NSHostingView(rootView: content.background(SettingsPalette.background(for: .light)))
             let window = NSWindow(contentRect: NSRect(x: 100, y: 100, width: 760, height: 850), styleMask: [.titled], backing: .buffered, defer: false)
             window.isReleasedWhenClosed = false
             window.title = "Ice Appearance Validation"
@@ -145,6 +148,7 @@ enum LocalBuildValidation {
                 return data
             }
             for (name, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
+                host.rootView = content.background(SettingsPalette.background(for: appearance == .aqua ? .light : .dark))
                 window.appearance = NSAppearance(named: appearance)
                 RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.2))
                 _ = try snapshot(host, name: "settings-\(name)")
@@ -193,7 +197,7 @@ enum LocalBuildValidation {
             }
             print("PASS: real Ice Bar inherits light/dark appearance and updates on the same panel")
             print("PASS: real unified SwiftUI appearance editor in light/dark")
-            print("PASS: real settings navigation and general pane at all sidebar sizes in light/dark")
+            print("PASS: settings content at all sidebar sizes in light/dark; window chrome requires --validate-settings-scene")
             return 0
         } catch {
             FileHandle.standardError.write(Data("Appearance validation failed: \(error)\n".utf8))

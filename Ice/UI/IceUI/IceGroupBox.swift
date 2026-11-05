@@ -98,9 +98,9 @@ struct IceGroupBox<Header: View, Content: View, Footer: View>: View {
             .background {
                 if style == .settings {
                     backgroundShape
-                        .fill(Color(nsColor: .windowBackgroundColor))
+                        .fill(SettingsPalette.groupBackground(for: colorScheme))
                         .overlay {
-                            backgroundShape.fill(.primary.opacity(colorScheme == .light ? 0.015 : 0.045))
+                            backgroundShape.fill(.primary.opacity(colorScheme == .light ? 0 : 0.045))
                         }
                         .overlay {
                             backgroundShape.strokeBorder(

@@ -8,10 +8,16 @@ import SwiftUI
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private weak var appState: AppState?
+    #if SWIFT_PACKAGE
+    private var settingsValidationTask: Task<Void, Never>?
+    #endif
 
     // MARK: NSApplicationDelegate Methods
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        #if SWIFT_PACKAGE
+        if SettingsSceneValidation.isRequested { return }
+        #endif
         guard let appState else {
             Logger.appDelegate.warning("Missing app state in applicationWillFinishLaunching")
             return
@@ -29,6 +35,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             Logger.appDelegate.warning("Missing app state in applicationDidFinishLaunching")
             return
         }
+        #if SWIFT_PACKAGE
+        if SettingsSceneValidation.isRequested {
+            settingsValidationTask = Task { @MainActor in
+                exit(await SettingsSceneValidation.run(appState: appState))
+            }
+            return
+        }
+        #endif
 
         // Dismiss the windows.
         appState.dismissSettingsWindow()
@@ -68,6 +82,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
         return true
     }
+
+    #if SWIFT_PACKAGE
+    func applicationWillTerminate(_ notification: Notification) {
+        settingsValidationTask?.cancel()
+    }
+    #endif
 
     // MARK: Other Methods
 

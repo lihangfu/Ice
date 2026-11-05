@@ -59,14 +59,35 @@ The bundle check runs the actual executable before migrations or permission
 requests. It verifies assets, image scales, light/dark colors, translations,
 metadata, signature and relocation, and checks that missing resources fail.
 It also checks legacy appearance migration. It does not exercise menu bar
-manipulation or grant macOS permissions. To render the actual appearance editor
-and general settings pane in both system themes without changing saved settings
-(including small, medium, and large sidebar sizes), and verify that the real
-Ice Bar material follows light/dark appearance changes on the same panel:
+manipulation or grant macOS permissions. To render the appearance editor and
+general settings content at small, medium, and large sidebar sizes in both themes,
+and verify Ice Bar appearance and icons:
 
 ```sh
 build/Ice.app/Contents/MacOS/Ice --validate-appearance build/appearance-validation
 ```
+
+These are component checks, not settings-window chrome acceptance. Validate the
+production SwiftUI settings scene separately:
+
+```sh
+build/Ice.app/Contents/MacOS/Ice --validate-settings-scene build/settings-scene-validation
+```
+
+This opens the real settings window after scene startup, skips migrations,
+permission requests and normal menu bar setup, and uses the default settings model.
+It captures all six panes in light/dark, scroll and return-to-top states, wide windows
+and shrinking back to minimum width. It checks that scrolling does not repaint the
+sidebar titlebar and that the window geometry observer cancels and restores its
+configuration when detached. Appearance, frame and pane are restored before exit.
+`scene-properties.json` records native toolbar geometry and actual activation state;
+material activity is not forced. Other macOS versions and accessibility preferences
+still need manual checks.
+
+For negative controls, append `--opaque-settings-window-control` to re-enable
+the retired window-wide opacity flag, or `--compact-settings-toolbar-control` for
+the wrong toolbar configuration. Both are expected to exit unsuccessfully.
+The retired `--original-settings-titlebar-control` reports this replacement entry.
 
 The appearance validation also checks monochrome icon rendering, colored badge
 preservation and transparent cutouts, and captures live status item comparisons.
