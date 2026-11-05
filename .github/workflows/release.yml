@@ -16,10 +16,13 @@ jobs:
   release:
     if: ${{ !github.event.deleted }}
     runs-on: macos-15-intel
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
       SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      SIGNING_KEYCHAIN_NAME: ice-signing.keychain-db
+      NOTARY_PROFILE: ice-notarization
     defaults:
       run:
         shell: bash
@@ -29,9 +32,16 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Check release guards
+        run: python3 Tests/run-release-tests.py
+
       - name: Validate release configuration
         env:
           SPARKLE_PRIVATE_ED_KEY: ${{ secrets.SPARKLE_PRIVATE_ED_KEY }}
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
           if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error::Release tags must use the format vMAJOR.MINOR.PATCH."
@@ -41,6 +51,20 @@ jobs:
           python3 - <<'PY'
           import base64
           import os
+          import re
+
+          for name in ("APPLE_TEAM_ID", "APPLE_CERTIFICATE_P12_BASE64", "APPLE_CERTIFICATE_PASSWORD",
+                       "APPLE_ID", "APPLE_APP_SPECIFIC_PASSWORD"):
+              if not os.environ.get(name):
+                  raise SystemExit(f"::error::Configure the {name} repository secret.")
+          if not re.fullmatch(r"[A-Z0-9]{10}", os.environ["APPLE_TEAM_ID"]):
+              raise SystemExit("::error::APPLE_TEAM_ID must contain 10 uppercase letters or digits.")
+          try:
+              certificate = base64.b64decode("".join(os.environ["APPLE_CERTIFICATE_P12_BASE64"].split()), validate=True)
+          except ValueError:
+              raise SystemExit("::error::APPLE_CERTIFICATE_P12_BASE64 must contain a base64-encoded .p12 identity.")
+          if not certificate:
+              raise SystemExit("::error::APPLE_CERTIFICATE_P12_BASE64 must contain a nonempty .p12 identity.")
 
           for name in ("SPARKLE_PUBLIC_ED_KEY", "SPARKLE_PRIVATE_ED_KEY"):
               try:
@@ -51,17 +75,72 @@ jobs:
                   raise SystemExit(f"::error::Configure {name} with a valid Sparkle key.")
           PY
 
-      - name: Build Ice
+      - name: Import Apple signing identity
+        env:
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          umask 077
+          certificate="$RUNNER_TEMP/ice-signing.p12"
+          trap 'rm -f "$certificate"' EXIT
+          printf '%s' "$APPLE_CERTIFICATE_P12_BASE64" | base64 --decode > "$certificate"
+
+          keychain_password=$(openssl rand -base64 32)
+          echo "::add-mask::$keychain_password"
+          security create-keychain -p "$keychain_password" "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
+          security set-keychain-settings -lut 7200 "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
+          security unlock-keychain -p "$keychain_password" "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
+          security import "$certificate" -k "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" \
+            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s \
+            -k "$keychain_password" "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" > /dev/null
+
+          curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
+            --max-time 60 https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer \
+            -o "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+          security verify-cert -c "$RUNNER_TEMP/DeveloperIDG2CA.cer" -l -p basic -L
+          security add-certificates -k "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" "$RUNNER_TEMP/DeveloperIDG2CA.cer"
+          security list-keychains -d user -s "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
+          security find-identity -v -p codesigning "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" > "$RUNNER_TEMP/ice-identities.txt"
+
+      - name: Validate Apple signing identity
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          identities = (Path(os.environ["RUNNER_TEMP"]) / "ice-identities.txt").read_text()
+          team = re.escape(os.environ["APPLE_TEAM_ID"])
+          matches = re.findall(r'^\s*\d+\) ([A-Fa-f0-9]{40}) "Developer ID Application: [^"\n]+ \(' + team + r'\)"$',
+                               identities, re.MULTILINE)
+          if len(matches) != 1:
+              raise SystemExit("::error::The .p12 must contain exactly one valid Developer ID Application identity for APPLE_TEAM_ID.")
+          with open(os.environ["GITHUB_ENV"], "a") as output:
+              output.write(f"APPLE_SIGNING_IDENTITY={matches[0]}\n")
+          print("Validated Developer ID Application identity for the configured team.")
+          PY
+
+      - name: Store notarization credentials
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          xcrun notarytool store-credentials "$NOTARY_PROFILE" \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" --keychain "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
+
+      - name: Archive and export Ice
         run: |
           xcodebuild -version
-          # Ad-hoc signing needs no Apple certificate. Disable Hardened Runtime
-          # for this build so library validation does not block Sparkle.
-          xcodebuild build \
+          # Archive/export also re-signs Sparkle's nested helpers for distribution.
+          xcodebuild archive \
             -project Ice.xcodeproj \
             -scheme Ice \
             -configuration Release \
             -destination "generic/platform=macOS" \
             -derivedDataPath build \
+            -archivePath build/Ice.xcarchive \
             -onlyUsePackageVersionsFromResolvedFile \
             ARCHS="arm64 x86_64" \
             ONLY_ACTIVE_ARCH=NO \
@@ -69,20 +148,79 @@ jobs:
             CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" \
             SPARKLE_PUBLIC_ED_KEY="$SPARKLE_PUBLIC_ED_KEY" \
             CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY=- \
-            DEVELOPMENT_TEAM= \
-            ENABLE_HARDENED_RUNTIME=NO
+            CODE_SIGN_IDENTITY="$APPLE_SIGNING_IDENTITY" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            ENABLE_HARDENED_RUNTIME=YES \
+            OTHER_CODE_SIGN_FLAGS=--timestamp
+
+          python3 - <<'PY'
+          import os
+          import plistlib
+
+          with open("build/ExportOptions.plist", "wb") as output:
+              plistlib.dump({
+                  "method": "developer-id",
+                  "signingStyle": "manual",
+                  "signingCertificate": os.environ["APPLE_SIGNING_IDENTITY"],
+                  "teamID": os.environ["APPLE_TEAM_ID"],
+              }, output)
+          PY
+          xcodebuild -exportArchive -archivePath build/Ice.xcarchive \
+            -exportOptionsPlist build/ExportOptions.plist -exportPath build/export
+
+      - name: Submit Ice for notarization
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent build/export/Ice.app build/Ice-notarization.zip
+          xcrun notarytool submit build/Ice-notarization.zip \
+            --keychain-profile "$NOTARY_PROFILE" --keychain "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" \
+            --output-format json > "$RUNNER_TEMP/ice-submission.json"
+          submission_id=$(python3 - <<'PY'
+          import json
+          import os
+          import uuid
+          from pathlib import Path
+
+          result = json.loads((Path(os.environ["RUNNER_TEMP"]) / "ice-submission.json").read_text())
+          print(uuid.UUID(result["id"]))
+          PY
+          )
+          echo "Notarization submission: $submission_id"
+          xcrun notarytool wait "$submission_id" \
+            --keychain-profile "$NOTARY_PROFILE" --keychain "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" \
+            --timeout 30m --output-format json > "$RUNNER_TEMP/ice-notarization.json"
+
+      - name: Verify notarization result
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result = json.loads((Path(os.environ["RUNNER_TEMP"]) / "ice-notarization.json").read_text())
+          print(f"Notarization submission: {result.get('id')}; status: {result.get('status')}")
+          if result.get("status") != "Accepted":
+              raise SystemExit("::error::Apple notarization must be Accepted before publishing.")
+          PY
+
+      - name: Staple notarization ticket
+        run: |
+          xcrun stapler staple build/export/Ice.app
+          xcrun stapler validate build/export/Ice.app
 
       - name: Package and verify Ice.zip
         run: |
           ditto -c -k --sequesterRsrc --keepParent \
-            build/Build/Products/Release/Ice.app build/Ice.zip
+            build/export/Ice.app build/Ice.zip
           ditto -x -k build/Ice.zip "$RUNNER_TEMP/ice-package-check"
 
           app="$RUNNER_TEMP/ice-package-check/Ice.app"
           test -x "$app/Contents/MacOS/Ice"
           lipo "$app/Contents/MacOS/Ice" -verify_arch arm64 x86_64
           codesign --verify --deep --strict --verbose=2 "$app"
+          codesign --verify --strict \
+            -R="anchor apple generic and certificate leaf[subject.OU] = \"$APPLE_TEAM_ID\" and certificate leaf[field.1.2.840.113635.100.6.1.13] exists" "$app"
+          xcrun stapler validate "$app"
+          spctl --assess --type execute --verbose=2 "$app"
           version=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$app/Contents/Info.plist")
           test "$version" = "${GITHUB_REF_NAME#v}"
           feed=$(/usr/libexec/PlistBuddy -c "Print :SUFeedURL" "$app/Contents/Info.plist")
@@ -118,7 +256,7 @@ jobs:
           expected_url = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/download/{os.environ['GITHUB_REF_NAME']}/Ice.zip"
           assert enclosure is not None and enclosure.get("url") == expected_url, "Incorrect update URL"
           assert int(enclosure.get("length")) == Path("build/Ice.zip").stat().st_size, "Incorrect archive size"
-          with open("build/Build/Products/Release/Ice.app/Contents/Info.plist", "rb") as file:
+          with open("build/export/Ice.app/Contents/Info.plist", "rb") as file:
               info = plistlib.load(file)
           assert item.findtext("sparkle:version", namespaces=ns) == info["CFBundleVersion"], "Incorrect build number"
           assert item.findtext("sparkle:shortVersionString", namespaces=ns) == info["CFBundleShortVersionString"], "Incorrect app version"
@@ -141,8 +279,8 @@ jobs:
           Install this release manually once to switch from the upstream update feed.
 
           This build supports Apple Silicon and Intel Macs running macOS 14 or later.
-          It is ad-hoc signed, has Hardened Runtime disabled, and is not notarized by Apple.
-          macOS may block the first launch. Automatic and manual update checks use this repository's update feed.
+          It is signed with Developer ID, has Hardened Runtime enabled, and is notarized by Apple.
+          Automatic and manual update checks use this repository's update feed.
           EOF
 
           gh release create "$GITHUB_REF_NAME" build/Ice.zip build/appcast.xml \
@@ -150,3 +288,11 @@ jobs:
             --title "Ice $GITHUB_REF_NAME" \
             --generate-notes \
             --notes-file "$RUNNER_TEMP/ice-release-notes.md"
+
+      - name: Remove signing credentials
+        if: ${{ always() }}
+        run: |
+          rm -f "$RUNNER_TEMP/ice-signing.p12" "$RUNNER_TEMP/DeveloperIDG2CA.cer" "$RUNNER_TEMP/ice-identities.txt"
+          if [[ -f "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME" ]]; then
+            security delete-keychain "$RUNNER_TEMP/$SIGNING_KEYCHAIN_NAME"
+          fi

@@ -112,8 +112,8 @@ where the tag is pushed. In this fork, releases are published to
 
 ### One-time update signing setup
 
-Sparkle requires a free Ed25519 update-signing key pair. An Apple Developer
-certificate is not required for these ad-hoc builds. Using the tools in the
+Sparkle requires a free Ed25519 update-signing key pair in addition to the Apple
+signing identity below. Using the tools in the
 [Sparkle 2.6.4 distribution](https://github.com/sparkle-project/Sparkle/releases/tag/2.6.4),
 run these commands from the extracted distribution directory:
 
@@ -135,6 +135,43 @@ updating. Local builds must also pass `SPARKLE_PUBLIC_ED_KEY` to `xcodebuild`.
 The workflow checks for missing keys before building and refuses to publish an
 unsigned update archive or a feed generated with mismatched keys.
 
+### One-time Apple signing and notarization setup
+
+An active Apple Developer Program membership and a Developer ID Application
+certificate with its private key are required. In Keychain Access, export the
+identity from **login > My Certificates** as a password-protected `.p12` file.
+Keep it outside this repository. Convert it to Base64 with
+`base64 -i /path/to/ice-signing.p12 | pbcopy` and configure these repository
+**Secrets** in **Settings > Secrets and variables > Actions**:
+
+| Secret | Value |
+| --- | --- |
+| `APPLE_CERTIFICATE_P12_BASE64` | Base64-encoded `.p12` containing the certificate and private key |
+| `APPLE_CERTIFICATE_PASSWORD` | Password used when exporting the `.p12` |
+| `APPLE_TEAM_ID` | The certificate's 10-character Apple Developer Team ID |
+| `APPLE_ID` | Apple Account used for notarization, with access to that team |
+| `APPLE_APP_SPECIFIC_PASSWORD` | App-specific password generated at [Apple Account](https://account.apple.com/) |
+
+The workflow imports the identity and Apple's Developer ID G2 intermediate
+certificate into a temporary keychain on the GitHub-hosted runner. It requires
+exactly one valid Developer ID Application identity for the configured team and
+validates notarization credentials before building. The `.p12` file is removed
+after import; the keychain, including its notarization credentials, is deleted
+when the job finishes, including on failure. Missing or invalid credentials fail
+the release; there is no unsigned publishing fallback.
+
+Run the release guard checks locally with Python 3 and macOS's system Ruby
+(using its bundled YAML and JSON libraries; no Python packages are required):
+
+```sh
+python3 Tests/run-release-tests.py
+```
+
+These checks exercise the workflow's admission scripts with fixture credentials
+and notarization results, and check its shell syntax. They do not import a real
+private key, archive an app, or contact Apple's notarization service. The release
+job runs them before using the configured credentials.
+
 ### Publish a release
 
 Commit and push the workflow before creating a release tag. The tagged commit
@@ -146,23 +183,30 @@ git push origin v0.11.15
 ```
 
 The release job uses GitHub's standard macOS 15 Intel runner (`macos-15-intel`)
-with Xcode 16.4 to build a Release app for both Apple Silicon and Intel Macs.
+with Xcode 16.4 to archive and export a Release app for both Apple Silicon and Intel Macs.
 The app version comes from the tag; its build
 number comes from the GitHub Actions run number. These values are set only for the CI build.
+The Xcode archive/export workflow signs the app and Sparkle's nested helpers with
+Developer ID and enables Hardened Runtime. It submits the exported app to Apple,
+waits up to 30 minutes for notarization, requires an `Accepted` result, and staples
+the ticket before creating the final `Ice.zip`. A timeout fails the job; Apple may
+continue processing the submission. Check the submission ID in the job's logs
+before retrying a delayed submission.
+
 Before publishing, the workflow extracts `Ice.zip` and checks the executable,
-both architectures, the code signature, the app version, and the update settings.
+both architectures, the code signature and expected Developer ID team, the
+stapled ticket, Gatekeeper acceptance, the app version, and the update settings.
 It then uses the pinned Sparkle package's tools to sign the archive, generate the
 appcast, and verify the update signature and metadata.
 
-No Apple certificates are required. The workflow uses the update-signing key
-above to sign the archive and GitHub's `GITHUB_TOKEN` to publish the release with
-`contents: write` permission. For a fork, enable GitHub Actions in the repository's
-Actions tab if it is disabled.
+The workflow uses GitHub's `GITHUB_TOKEN` with `contents: write` permission to
+publish the release. For a fork, enable GitHub Actions in the repository's Actions
+tab if it is disabled.
 
-These builds use ad-hoc signing, disable Hardened Runtime to allow Sparkle to
-load, and are not notarized by Apple. macOS may block the first launch. Automatic
-and manual update checks both read this fork's latest release's `appcast.xml` and
+Automatic and manual update checks both read this fork's latest release's `appcast.xml` and
 download its signed `Ice.zip`. The Homebrew cask still installs upstream Ice.
+Changing from ad-hoc to Developer ID signing may require users to grant
+Accessibility and Screen Recording access again.
 
 Install the first build with this update configuration manually. Existing builds
 still use the upstream feed and key and cannot discover this fork's updates.
@@ -176,6 +220,11 @@ remove its release through GitHub; publish corrections under a new tag.
 To recover from a broken release, manually install a known-good build from this
 fork, keeping the same signing key, then publish a corrected build with a higher
 build number. A source rollback alone does not change already installed apps.
+To roll back this signing integration, revert the workflow change before creating
+a new tag; older workflow revisions produce ad-hoc builds without notarization.
+Rotate the `.p12` secrets before the Developer ID certificate expires, keeping the
+same team and Sparkle update-signing key. An Apple identity change does not replace
+Sparkle's update-signing key.
 
 ## Features/Roadmap
 
