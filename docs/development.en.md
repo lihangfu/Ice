@@ -171,8 +171,10 @@ git tag v0.11.15
 git push origin v0.11.15
 ```
 
-The release job uses GitHub's standard macOS 15 Intel runner (`macos-15-intel`)
-with Xcode 16.4 to archive and export a Release app for both Apple Silicon and Intel Macs.
+Release and recovery jobs use GitHub's standard macOS 15 Apple Silicon runner
+(`macos-15`) with Xcode 16.4 to avoid the Intel runner's CloudKit connection failures;
+see the [runner decision](notes/implemented/process/2026-11-06-release-arm64-runner.md).
+Initial releases still archive and export one universal Release app for both Apple Silicon and Intel Macs.
 The app version comes from the tag; its build
 number comes from the GitHub Actions run number. These values are set only for the CI build.
 The Xcode archive/export workflow signs the app and Sparkle's nested helpers with

@@ -110,7 +110,7 @@ git tag v0.11.15
 git push origin v0.11.15
 ```
 
-发布任务使用 GitHub 标准 macOS 15 Intel runner（`macos-15-intel`）和 Xcode 16.4，为 Apple Silicon 与 Intel Mac 归档并导出 Release 应用。应用版本来自标签，构建号来自 GitHub Actions 运行编号，仅在 CI 构建中设置。
+发布及恢复任务使用 GitHub 标准 macOS 15 Apple Silicon runner（`macos-15`）和 Xcode 16.4，避开 Intel runner 的 CloudKit 连接故障；选择理由见[发布运行环境记录](notes/implemented/process/2026-11-06-release-arm64-runner.md)。首次发布仍为 Apple Silicon 与 Intel Mac 归档并导出同一个双架构 Release 应用。应用版本来自标签，构建号来自 GitHub Actions 运行编号，仅在 CI 构建中设置。
 
 Xcode 归档与导出工作流会使用 Developer ID 对应用及 Sparkle 内嵌辅助程序签名，并启用 Hardened Runtime（强化运行时）。工作流会将导出的应用提交给 Apple，最多等待 30 分钟，并显示 `notarytool` 的处理进度。等待结束后查询最新状态、尝试获取 Apple 日志，并将提交 ID、退出码和状态写入运行摘要。只有公证结果为 `Accepted` 才能继续附加票据、生成最终 `Ice.zip` 和发布。超时会导致任务失败，但 Apple 会继续处理该提交。
 
