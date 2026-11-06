@@ -28,6 +28,7 @@
 ```sh
 python3 Tests/run-build-tests.py
 bash Tests/run-localization-tests.sh
+bash Tests/run-icon-appearance-tests.sh
 ```
 
 应用包检查会在迁移或请求权限之前运行真实可执行文件，验证资源、图片缩放、浅色和深色配色、翻译、元数据、签名及应用包移动后的行为，并确认缺失资源时会失败。它还会检查旧版外观设置的迁移，但不会操作菜单栏项目或授予 macOS 权限。如需在两种系统主题下，以小、中、大三种侧边栏尺寸渲染外观编辑器和通用设置内容，并验证 Ice Bar 的外观与图标：

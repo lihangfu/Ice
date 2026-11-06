@@ -68,7 +68,8 @@ Ice uses system APIs that are available starting in macOS 14.
 The Ice Bar uses a native frosted background that blurs the windows behind it
 while keeping menu bar icons sharp. It respects macOS Reduce Transparency,
 which replaces the blur with a solid background. Monochrome icons with transparent
-backgrounds adapt to the system light/dark appearance. Colored or ambiguous
+backgrounds adapt to the system light/dark appearance, including captures with
+faint black shadows clipped at the top or bottom edge. Colored or ambiguous
 captures keep their original colors, including mixed icons with status badges.
 This adaptation applies to Ice Bar and the visible, hidden, and always-hidden
 sections in settings. Drag previews use the same themed colors. Search results

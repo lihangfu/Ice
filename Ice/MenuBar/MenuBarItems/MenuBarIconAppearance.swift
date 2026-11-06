@@ -37,9 +37,15 @@ enum MenuBarIconAppearance {
             for x in 0..<width {
                 let offset = (y * width + x) * 4
                 let alpha = Double(pixels[offset + 3]) / 255
-                // A transparent perimeter prevents opaque tiles from becoming solid rectangles.
+                // Native shadows can reach the top/bottom crop. Keep side padding transparent
+                // and allow only faint near-black pixels, preserving backgrounds and edge badges.
                 if x == 0 || y == 0 || x == width - 1 || y == height - 1, alpha > 0.03 {
-                    return nil
+                    guard
+                        x > 0, x < width - 1, alpha < 0.08,
+                        Double(max(pixels[offset], pixels[offset + 1], pixels[offset + 2])) <= 0.06 * alpha * 255
+                    else {
+                        return nil
+                    }
                 }
                 guard alpha >= 0.08 else { continue }
                 let red = Double(pixels[offset]) / 255 / alpha
