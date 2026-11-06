@@ -35,8 +35,7 @@ concurrency:
 jobs:
   release:
     if: ${{ !github.event.deleted }}
-    # Avoid the Intel runner's CloudKit/HTTP3 failures: actions/runner-images#14924.
-    runs-on: macos-15
+    runs-on: macos-15-intel
     timeout-minutes: 60
     env:
       DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
@@ -430,6 +429,15 @@ jobs:
           if result.get("id") != os.environ["NOTARY_SUBMISSION_ID"] or result.get("status") != "Accepted":
               raise SystemExit("::error::The requested Apple notarization submission must be Accepted before publishing.")
           PY
+
+      - name: Use TCP for notarization tickets
+        run: |
+          # CloudKit HTTP/3 drops connections on hosted runners: actions/runner-images#14924.
+          sudo pfctl -sr | grep -E '^anchor "com[.]apple/[*]"'
+          printf '%s\n' 'block return out quick proto udp from any to any port 443' | \
+            sudo pfctl -a com.apple/ice-notarization -f -
+          sudo pfctl -E
+          sudo pfctl -a com.apple/ice-notarization -sr
 
       - name: Staple notarization ticket
         run: |

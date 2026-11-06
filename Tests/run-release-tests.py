@@ -334,6 +334,44 @@ esac
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("release create v1.2.3 ", (self.root / "release-calls").read_text())
 
+    def stub_ticket_network(self):
+        (self.root / "main-pf-rules").write_text('anchor "com.apple/*" all\n')
+        self.stub("sudo", '''
+case "$*" in
+  'pfctl -sr') cat "$RUNNER_TEMP/main-pf-rules" ;;
+  'pfctl -a com.apple/ice-notarization -f -')
+    if [[ "${FIXTURE_PF_LOAD_EXIT:-0}" != 0 ]]; then exit "$FIXTURE_PF_LOAD_EXIT"; fi
+    cat > "$RUNNER_TEMP/ticket-pf-rules" ;;
+  'pfctl -E') echo enabled > "$RUNNER_TEMP/ticket-pf-enabled" ;;
+  'pfctl -a com.apple/ice-notarization -sr') cat "$RUNNER_TEMP/ticket-pf-rules" ;;
+  *) echo "Unexpected privileged command: $*" >&2; exit 99 ;;
+esac
+''')
+
+    def test_ticket_network_preserves_system_rules(self):
+        self.stub_ticket_network()
+        result = self.run_step("Use TCP for notarization tickets")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((self.root / "main-pf-rules").read_text(), 'anchor "com.apple/*" all\n')
+        self.assertEqual((self.root / "ticket-pf-rules").read_text(),
+                         "block return out quick proto udp from any to any port 443\n")
+        self.assertEqual((self.root / "ticket-pf-enabled").read_text(), "enabled\n")
+
+    def test_ticket_network_requires_active_system_anchor(self):
+        self.stub_ticket_network()
+        (self.root / "main-pf-rules").write_text('scrub-anchor "com.apple/*" all\n')
+        result = self.run_step("Use TCP for notarization tickets")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.root / "ticket-pf-rules").exists())
+        self.assertFalse((self.root / "ticket-pf-enabled").exists())
+
+    def test_ticket_network_load_failure_stops_setup(self):
+        self.stub_ticket_network()
+        self.env["FIXTURE_PF_LOAD_EXIT"] = "3"
+        result = self.run_step("Use TCP for notarization tickets")
+        self.assertEqual(result.returncode, 3, result.stdout + result.stderr)
+        self.assertFalse((self.root / "ticket-pf-enabled").exists())
+
     def test_shell_syntax(self):
         for name, script in STEPS.items():
             with self.subTest(step=name):
