@@ -425,6 +425,15 @@ extension NSScreen {
         screens.first { $0.frame.contains(NSEvent.mouseLocation) }
     }
 
+    /// Resolves menu-bar coordinates, including a pointer touching the top screen edge.
+    static func screenForMenuBar(at point: CGPoint) -> NSScreen? {
+        let screens = NSScreen.screens
+        guard let index = MenuBarScreenGeometry.screenIndex(at: point, frames: screens.map(\.frame)) else {
+            return nil
+        }
+        return screens[index]
+    }
+
     /// The display identifier of the screen.
     var displayID: CGDirectDisplayID {
         // Value and type are guaranteed here, so force casting is okay.

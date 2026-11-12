@@ -13,6 +13,12 @@ struct IceApp: App {
     init() {
         #if SWIFT_PACKAGE
         if
+            let index = CommandLine.arguments.firstIndex(of: "--validate-ice-bar"),
+            CommandLine.arguments.indices.contains(index + 1)
+        {
+            IceBarInteractionValidation.run(to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
+        }
+        if
             let index = CommandLine.arguments.firstIndex(of: "--validate-appearance"),
             CommandLine.arguments.indices.contains(index + 1)
         {

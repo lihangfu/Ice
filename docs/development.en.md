@@ -54,6 +54,14 @@ and verify Ice Bar appearance and icons:
 build/Ice.app/Contents/MacOS/Ice --validate-appearance build/appearance-validation
 ```
 
+Ice Bar interaction regression checks exercise the native panel through close-during-load, replacement, cancellation, delayed middle/edge click anchoring (including exact top edges) in all three location modes and resizing on connected screens, modifier waits, and exclusive item operations:
+
+```sh
+build/Ice.app/Contents/MacOS/Ice --validate-ice-bar build/ice-bar-interaction-validation
+```
+
+Geometry checks also cover the logged `(960.5859375, 982)` point, horizontal and vertical display seams, negative display origins, and points outside all displays. This entry point saves panel snapshots and `panel-frames.json` before normal setup. It does not change preferences or move the pointer or menu bar items. Controlled delays replace capture loading and supplied modifier states exercise waits; third-party menus, system permissions, rapid clicks, and display reconnection still require manual testing.
+
 These are component checks, not settings-window chrome acceptance. Validate the
 production SwiftUI settings scene separately:
 

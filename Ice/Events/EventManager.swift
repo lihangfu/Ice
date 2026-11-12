@@ -26,7 +26,7 @@ final class EventManager {
         }
         switch event.type {
         case .leftMouseDown:
-            handleShowOnClick()
+            handleShowOnClick(with: event)
             handleSmartRehide(with: event)
         case .rightMouseDown:
             handleShowRightClickMenu()
@@ -146,7 +146,7 @@ extension EventManager {
 
     // MARK: Handle Show On Click
 
-    private func handleShowOnClick() {
+    private func handleShowOnClick(with event: NSEvent) {
         guard
             let appState,
             appState.settingsManager.generalSettingsManager.showOnClick,
@@ -155,22 +155,28 @@ extension EventManager {
             return
         }
 
+        let placement = appState.menuBarManager.iceBarPanel.capturePlacement(
+            at: event.cgEvent?.unflippedLocation ?? MouseCursor.locationAppKit,
+            inEmptyMenuBarSpace: true
+        )
+        let modifiers = event.modifierFlags.intersection([.control, .option, .command, .shift])
+
         Task {
             // Short delay helps the toggle action feel more natural.
             try? await Task.sleep(for: .milliseconds(50))
 
-            if NSEvent.modifierFlags == .control {
+            if modifiers == .control {
                 handleShowRightClickMenu()
             } else if
-                NSEvent.modifierFlags == .option,
+                modifiers == .option,
                 appState.settingsManager.advancedSettingsManager.canToggleAlwaysHiddenSection
             {
                 if let alwaysHiddenSection = appState.menuBarManager.section(withName: .alwaysHidden) {
-                    alwaysHiddenSection.toggle()
+                    alwaysHiddenSection.toggle(placement: placement)
                 }
             } else {
                 if let hiddenSection = appState.menuBarManager.section(withName: .hidden) {
-                    hiddenSection.toggle()
+                    hiddenSection.toggle(placement: placement)
                 }
             }
         }
@@ -456,14 +462,7 @@ extension EventManager {
 extension EventManager {
     /// Returns the best screen to use for event manager calculations.
     var bestScreen: NSScreen? {
-        guard let appState else {
-            return nil
-        }
-        if appState.isActiveSpaceFullscreen {
-            return NSScreen.screenWithMouse ?? NSScreen.main
-        } else {
-            return NSScreen.main
-        }
+        MouseCursor.locationAppKit.flatMap { NSScreen.screenForMenuBar(at: $0) } ?? NSScreen.main
     }
 
     /// A Boolean value that indicates whether the mouse pointer is within

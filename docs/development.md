@@ -37,6 +37,14 @@ bash Tests/run-icon-appearance-tests.sh
 build/Ice.app/Contents/MacOS/Ice --validate-appearance build/appearance-validation
 ```
 
+悬浮栏交互回归使用真实面板，检查加载期间关闭、连续打开、任务取消、当前连接屏幕上三种位置模式的中间/边缘点击（包括精确贴顶）、延迟处理后的定位和宽度变化，以及修饰键等待与操作互斥：
+
+```sh
+build/Ice.app/Contents/MacOS/Ice --validate-ice-bar build/ice-bar-interaction-validation
+```
+
+几何检查还覆盖日志中的 `(960.5859375, 982)`、水平及垂直多屏交界、负坐标显示器和真正位于屏幕外的点。此入口保存面板快照和 `panel-frames.json`，在正常初始化之前运行，不改偏好设置、不移动鼠标或菜单栏图标。它以可控延迟代替截图加载、以指定修饰键状态验证等待，因此不能代替第三方菜单实际弹出、系统权限、快速连续点击和拔插显示器的实机测试。
+
 这些检查覆盖组件，不能作为设置窗口标题栏及边框的验收依据。请单独验证实际使用的 SwiftUI 设置场景：
 
 ```sh

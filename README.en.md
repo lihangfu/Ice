@@ -65,6 +65,8 @@ Ice uses system APIs that are available starting in macOS 14.
 
 ### Ice Bar and menu bar layout
 
+When opened by a menu bar click, Ice Bar captures the clicked screen and anchor as the event arrives; deferred handling, loading icons, and resizing do not select a new anchor. Clicks exactly on the top screen edge preserve their horizontal position too. If the Ice icon is hidden or outside the target screen, the bar uses the pointer position on that screen, or its right edge when the pointer is elsewhere. Closing invalidates pending presentations. Caps Lock does not block icon clicks. Requests time out if mouse-affecting modifiers remain pressed or another operation stays busy; release the keys and retry.
+
 The Ice Bar uses a native frosted background that blurs the windows behind it
 while keeping menu bar icons sharp. It respects macOS Reduce Transparency,
 which replaces the blur with a solid background. Monochrome icons with transparent

@@ -122,6 +122,8 @@ final class MenuBarItemManager: ObservableObject {
     /// items is being moved.
     private var itemMoveCount = 0
 
+    private var isPerformingItemOperation = false
+
     /// A Boolean value that indicates whether a mouse button is down.
     private var isMouseButtonDown = false
 
@@ -490,7 +492,12 @@ extension MenuBarItemManager {
         } else {
             Task(operation: operation)
         }
-        try await task.value
+        try await withTaskCancellationHandler {
+            try await task.value
+            try Task.checkCancellation()
+        } onCancel: {
+            task.cancel()
+        }
     }
 
     /// Waits asynchronously for all menu bar items to stop moving.
@@ -531,32 +538,39 @@ extension MenuBarItemManager {
         }
     }
 
-    /// Waits asynchronously until no modifier keys are pressed.
-    ///
-    /// - Parameter timeout: Amount of time to wait before throwing an error.
-    func waitForNoModifiersPressed(timeout: Duration? = nil) async throws {
-        try await waitWithTask(timeout: timeout) {
-            // Return early if no flags are pressed.
-            if NSEvent.modifierFlags.isEmpty {
+    /// Lock-state and device flags must not block a synthetic mouse operation.
+    func waitForNoModifiersPressed(
+        timeout: Duration = .seconds(2),
+        flags: () -> NSEvent.ModifierFlags = { NSEvent.modifierFlags }
+    ) async throws {
+        let deadline = ContinuousClock.now.advanced(by: timeout)
+        let blockingFlags: NSEvent.ModifierFlags = [.command, .control, .option, .shift]
+        while true {
+            try Task.checkCancellation()
+            if flags().intersection(blockingFlags).isEmpty {
                 return
             }
-
-            var cancellable: AnyCancellable?
-
-            await withCheckedContinuation { continuation in
-                cancellable = Publishers.Merge(
-                    UniversalEventMonitor.publisher(for: .flagsChanged),
-                    RunLoopLocalEventMonitor.publisher(for: .flagsChanged, mode: .eventTracking)
-                )
-                .removeDuplicates()
-                .sink { _ in
-                    if NSEvent.modifierFlags.isEmpty {
-                        cancellable?.cancel()
-                        continuation.resume()
-                    }
-                }
+            guard ContinuousClock.now < deadline else {
+                throw TaskTimeoutError()
             }
+            try await Task.sleep(for: .milliseconds(10))
         }
+    }
+
+    /// Owns the cursor and event monitors across suspension points. Callers must not nest operations.
+    func withItemOperation(_ operation: () async throws -> Void) async throws {
+        let deadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while isPerformingItemOperation {
+            try Task.checkCancellation()
+            guard ContinuousClock.now < deadline else {
+                throw TaskTimeoutError()
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        try Task.checkCancellation()
+        isPerformingItemOperation = true
+        defer { isPerformingItemOperation = false }
+        try await operation()
     }
 }
 
@@ -1067,12 +1081,12 @@ extension MenuBarItemManager {
         }
     }
 
-    /// Moves a menu bar item to the given destination.
+    /// Moves a menu bar item while the caller owns the item operation.
     ///
     /// - Parameters:
     ///   - item: A menu bar item to move.
     ///   - destination: A destination to move the menu bar item.
-    func move(item: MenuBarItem, to destination: MoveDestination) async throws {
+    private func moveWithinOperation(item: MenuBarItem, to destination: MoveDestination) async throws {
         if try itemHasCorrectPosition(item: item, for: destination) {
             Logger.itemManager.debug("\(item.logString) is already in the correct position")
             return
@@ -1082,7 +1096,9 @@ extension MenuBarItemManager {
             // Order of these waiters matters, as the modifiers could be released
             // while the mouse is still moving.
             try await waitForNoModifiersPressed()
-            try await waitForMouseToStopMoving()
+            try await waitForMouseToStopMoving(timeout: .seconds(1))
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             throw EventError(code: .couldNotComplete, item: item)
         }
@@ -1114,6 +1130,7 @@ extension MenuBarItemManager {
         // Item movement can occasionally fail. Retry up to a total of 5 attempts,
         // throwing the last attempt's error if it fails.
         for n in 1...5 {
+            try Task.checkCancellation()
             do {
                 try await moveItemWithoutRestoringMouseLocation(item, to: destination)
                 guard let newFrame = getCurrentFrame(for: item) else {
@@ -1125,6 +1142,8 @@ extension MenuBarItemManager {
                 } else {
                     throw EventError(code: .couldNotComplete, item: item)
                 }
+            } catch is CancellationError {
+                throw CancellationError()
             } catch where n < 5 {
                 Logger.itemManager.warning("Attempt \(n) to move \(item.logString) failed (error: \(error))")
                 try await wakeUpItem(item)
@@ -1142,21 +1161,27 @@ extension MenuBarItemManager {
     ///   - destination: A destination to move the menu bar item.
     ///   - timeout: Amount of time to wait before throwing an error.
     func slowMove(item: MenuBarItem, to destination: MoveDestination, timeout: Duration = .seconds(1)) async throws {
+        try await withItemOperation {
+            try await slowMoveWithinOperation(item: item, to: destination, timeout: timeout)
+        }
+    }
+
+    private func slowMoveWithinOperation(item: MenuBarItem, to destination: MoveDestination, timeout: Duration = .seconds(1)) async throws {
         itemMoveCount += 1
         defer {
             itemMoveCount -= 1
         }
-        try await move(item: item, to: destination)
-        let waitTask = Task(timeout: timeout) {
-            while true {
-                try Task.checkCancellation()
-                if try await self.itemHasCorrectPosition(item: item, for: destination) {
-                    return
+        try await moveWithinOperation(item: item, to: destination)
+        do {
+            try await waitWithTask(timeout: timeout) {
+                while true {
+                    try Task.checkCancellation()
+                    if try await self.itemHasCorrectPosition(item: item, for: destination) {
+                        return
+                    }
+                    try await Task.sleep(for: .milliseconds(10))
                 }
             }
-        }
-        do {
-            try await waitTask.value
         } catch is TaskTimeoutError {
             throw EventError(code: .otherTimeout, item: item)
         }
@@ -1166,8 +1191,9 @@ extension MenuBarItemManager {
 // MARK: - Click Items
 
 extension MenuBarItemManager {
-    /// Clicks the given menu bar item with the given mouse button.
-    func click(item: MenuBarItem, with mouseButton: CGMouseButton) async throws {
+    /// Clicks an item while the caller owns the item operation.
+    private func clickWithinOperation(item: MenuBarItem, with mouseButton: CGMouseButton) async throws {
+        try await waitForNoModifiersPressed()
         guard let source = CGEventSource(stateID: .hidSystemState) else {
             throw EventError(code: .invalidEventSource, item: item)
         }
@@ -1298,17 +1324,27 @@ extension MenuBarItemManager {
     ///     clicked once movement is finished.
     ///   - mouseButton: The mouse button of the click.
     func tempShowItem(_ item: MenuBarItem, clickWhenFinished: Bool, mouseButton: CGMouseButton) {
+        Task {
+            do {
+                try await withItemOperation {
+                    await tempShowItemWithinOperation(item, clickWhenFinished: clickWhenFinished, mouseButton: mouseButton)
+                }
+            } catch {
+                Logger.itemManager.error("Could not begin temporary show for \(item.logString): \(error)")
+            }
+        }
+    }
+
+    private func tempShowItemWithinOperation(_ item: MenuBarItem, clickWhenFinished: Bool, mouseButton: CGMouseButton) async {
         if
             let latest = MenuBarItem(windowID: item.windowID),
             latest.isOnScreen
         {
             if clickWhenFinished {
-                Task {
-                    do {
-                        try await click(item: latest, with: mouseButton)
-                    } catch {
-                        Logger.itemManager.error("ERROR: \(error)")
-                    }
+                do {
+                    try await clickWithinOperation(item: latest, with: mouseButton)
+                } catch {
+                    Logger.itemManager.error("Could not click \(item.logString): \(error)")
                 }
             }
             return
@@ -1335,6 +1371,10 @@ extension MenuBarItemManager {
         // Remove all items up to the hidden control item.
         items.trimPrefix { $0.info != .hiddenControlItem }
         // Remove the hidden control item.
+        guard !items.isEmpty else {
+            Logger.itemManager.warning("Hidden control item disappeared before showing \(item.logString)")
+            return
+        }
         items.removeFirst()
         // Remove all offscreen items.
         items.trimPrefix { !$0.isOnScreen }
@@ -1357,41 +1397,39 @@ extension MenuBarItemManager {
 
         let initialWindows = WindowInfo.getOnScreenWindows()
 
-        Task {
-            if clickWhenFinished {
-                do {
-                    try await slowMove(item: item, to: .leftOfItem(targetItem))
-                    try await click(item: item, with: mouseButton)
-                } catch {
-                    Logger.itemManager.error("ERROR: \(error)")
-                }
-            } else {
-                do {
-                    try await move(item: item, to: .leftOfItem(targetItem))
-                } catch {
-                    Logger.itemManager.error("ERROR: \(error)")
-                }
+        if clickWhenFinished {
+            do {
+                try await slowMoveWithinOperation(item: item, to: .leftOfItem(targetItem))
+                try await clickWithinOperation(item: item, with: mouseButton)
+            } catch {
+                Logger.itemManager.error("ERROR: \(error)")
             }
-
-            try? await Task.sleep(for: .milliseconds(100))
-
-            let currentWindows = WindowInfo.getOnScreenWindows()
-
-            let shownInterfaceWindow = currentWindows.first { currentWindow in
-                currentWindow.ownerPID == item.ownerPID &&
-                !initialWindows.contains { initialWindow in
-                    currentWindow.windowID == initialWindow.windowID
-                }
+        } else {
+            do {
+                try await moveWithinOperation(item: item, to: .leftOfItem(targetItem))
+            } catch {
+                Logger.itemManager.error("ERROR: \(error)")
             }
-
-            let context = TempShownItemContext(
-                info: item.info,
-                returnDestination: destination,
-                shownInterfaceWindow: shownInterfaceWindow
-            )
-            tempShownItemContexts.append(context)
-            runTempShownItemTimer(for: appState.settingsManager.advancedSettingsManager.tempShowInterval)
         }
+
+        try? await Task.sleep(for: .milliseconds(100))
+
+        let currentWindows = WindowInfo.getOnScreenWindows()
+
+        let shownInterfaceWindow = currentWindows.first { currentWindow in
+            currentWindow.ownerPID == item.ownerPID &&
+            !initialWindows.contains { initialWindow in
+                currentWindow.windowID == initialWindow.windowID
+            }
+        }
+
+        let context = TempShownItemContext(
+            info: item.info,
+            returnDestination: destination,
+            shownInterfaceWindow: shownInterfaceWindow
+        )
+        tempShownItemContexts.append(context)
+        runTempShownItemTimer(for: appState.settingsManager.advancedSettingsManager.tempShowInterval)
     }
 
     /// Rehides all temporarily shown items.
@@ -1399,6 +1437,17 @@ extension MenuBarItemManager {
     /// If an item is currently showing its interface, this method waits for the
     /// interface to close before hiding the items.
     func rehideTempShownItems() async {
+        do {
+            try await withItemOperation {
+                await rehideTempShownItemsWithinOperation()
+            }
+        } catch {
+            Logger.itemManager.warning("Deferring temporary item restoration: \(error)")
+            runTempShownItemTimer(for: 3)
+        }
+    }
+
+    private func rehideTempShownItemsWithinOperation() async {
         itemMoveCount += 1
         defer {
             itemMoveCount -= 1
@@ -1436,7 +1485,7 @@ extension MenuBarItemManager {
                 continue
             }
             do {
-                try await move(item: item, to: context.returnDestination)
+                try await moveWithinOperation(item: item, to: context.returnDestination)
             } catch {
                 Logger.itemManager.error("Failed to rehide \(item.logString) (error: \(error))")
                 failedContexts.append(context)

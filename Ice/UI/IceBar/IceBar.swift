@@ -9,9 +9,17 @@ import SwiftUI
 // MARK: - IceBarPanel
 
 final class IceBarPanel: NSPanel {
+    struct Placement {
+        let screen: NSScreen
+        let centerX: CGFloat
+    }
+
     private weak var appState: AppState?
 
     private(set) var currentSection: MenuBarSection.Name?
+
+    private var presentationID: UUID?
+    private var presentationAnchor: Placement?
 
     private var cancellables = Set<AnyCancellable>()
 
@@ -85,11 +93,11 @@ final class IceBarPanel: NSPanel {
             .sink { [weak self] _ in
                 guard
                     let self,
-                    let screen
+                    let anchor = presentationAnchor
                 else {
                     return
                 }
-                updateOrigin(for: screen)
+                updateOrigin(for: anchor.screen)
             }
             .store(in: &c)
 
@@ -97,89 +105,121 @@ final class IceBarPanel: NSPanel {
     }
 
     private func updateOrigin(for screen: NSScreen) {
-        guard let appState else {
+        guard let anchor = presentationAnchor else {
             return
         }
 
-        func getOrigin(for iceBarLocation: IceBarLocation) -> CGPoint {
-            let menuBarHeight = screen.getMenuBarHeight() ?? 0
-            let originY = ((screen.frame.maxY - 1) - menuBarHeight) - frame.height
-
-            var originForRightOfScreen: CGPoint {
-                CGPoint(x: screen.frame.maxX - frame.width, y: originY)
-            }
-
-            switch iceBarLocation {
-            case .dynamic:
-                if appState.eventManager.isMouseInsideEmptyMenuBarSpace {
-                    return getOrigin(for: .mousePointer)
-                }
-                return getOrigin(for: .iceIcon)
-            case .mousePointer:
-                guard let location = MouseCursor.locationAppKit else {
-                    return getOrigin(for: .iceIcon)
-                }
-
-                let lowerBound = screen.frame.minX
-                let upperBound = screen.frame.maxX - frame.width
-
-                guard lowerBound <= upperBound else {
-                    return originForRightOfScreen
-                }
-
-                return CGPoint(x: (location.x - frame.width / 2).clamped(to: lowerBound...upperBound), y: originY)
-            case .iceIcon:
-                let lowerBound = screen.frame.minX
-                let upperBound = screen.frame.maxX - frame.width
-
-                guard
-                    lowerBound <= upperBound,
-                    let section = appState.menuBarManager.section(withName: .visible),
-                    let windowID = section.controlItem.windowID,
-                    // Bridging.getWindowFrame is more reliable than ControlItem.windowFrame,
-                    // i.e. if the control item is offscreen.
-                    let itemFrame = Bridging.getWindowFrame(for: windowID)
-                else {
-                    return originForRightOfScreen
-                }
-
-                return CGPoint(x: (itemFrame.midX - frame.width / 2).clamped(to: lowerBound...upperBound), y: originY)
-            }
-        }
-
-        setFrameOrigin(getOrigin(for: appState.settingsManager.generalSettingsManager.iceBarLocation))
+        let menuBarHeight = screen.getMenuBarHeight() ?? 0
+        let originY = screen.frame.maxY - 1 - menuBarHeight - frame.height
+        let upperBound = max(screen.frame.minX, screen.frame.maxX - frame.width)
+        let originX = (anchor.centerX - frame.width / 2).clamped(to: screen.frame.minX...upperBound)
+        setFrameOrigin(CGPoint(x: originX, y: originY))
     }
 
-    func show(section: MenuBarSection.Name, on screen: NSScreen) async {
+    /// Capture before scheduling or delaying a show; the pointer and active screen can change meanwhile.
+    func capturePlacement(
+        at mouseLocation: CGPoint? = MouseCursor.locationAppKit,
+        inEmptyMenuBarSpace: Bool? = nil
+    ) -> Placement? {
+        let pointerScreen = mouseLocation.flatMap { NSScreen.screenForMenuBar(at: $0) }
+        guard
+            let appState,
+            let screen = pointerScreen ?? NSScreen.main
+        else {
+            return nil
+        }
+        let centerX = anchorX(
+            for: screen,
+            appState: appState,
+            mouseX: pointerScreen == nil ? nil : mouseLocation?.x,
+            inEmptyMenuBarSpace: inEmptyMenuBarSpace ?? appState.eventManager.isMouseInsideEmptyMenuBarSpace
+        )
+        Logger.iceBar.info("Captured placement: display=\(screen.displayID), pointer=\(String(describing: mouseLocation)), centerX=\(centerX), mode=\(appState.settingsManager.generalSettingsManager.iceBarLocation.rawValue)")
+        return Placement(screen: screen, centerX: centerX)
+    }
+
+    private func anchorX(for screen: NSScreen, appState: AppState, mouseX: CGFloat?, inEmptyMenuBarSpace: Bool) -> CGFloat {
+        let location = appState.settingsManager.generalSettingsManager.iceBarLocation
+        if location == .mousePointer || (location == .dynamic && inEmptyMenuBarSpace) {
+            return mouseX ?? screen.frame.maxX
+        }
+
+        // Removed status items retain a window at (0, 0); it is not a valid anchor.
+        if
+            let controlItem = appState.menuBarManager.section(withName: .visible)?.controlItem,
+            controlItem.isAddedToMenuBar,
+            let windowID = controlItem.windowID,
+            let info = WindowInfo(windowID: windowID),
+            info.isOnScreen,
+            let itemFrame = Bridging.getWindowFrame(for: windowID),
+            itemFrame.width > 0,
+            CGDisplayBounds(screen.displayID).contains(CGPoint(x: itemFrame.midX, y: itemFrame.midY))
+        {
+            return itemFrame.midX
+        }
+        return mouseX ?? screen.frame.maxX
+    }
+
+    func show(section: MenuBarSection.Name, placement: Placement) async {
         guard let appState else {
             return
         }
+        await show(section: section, placement: placement) {
+            await appState.itemManager.cacheItemsIfNeeded()
+            if ScreenCapture.cachedCheckPermissions() {
+                await appState.imageCache.updateCache()
+            }
+        }
+    }
+
+    // Preparation belongs to this presentation; closing or replacing it invalidates the result.
+    func show(section: MenuBarSection.Name, placement: Placement, prepareItems: () async -> Void) async {
+        guard
+            let appState,
+            !Task.isCancelled,
+            NSScreen.screens.contains(where: { $0.displayID == placement.screen.displayID })
+        else {
+            return
+        }
+        let requestID = UUID()
+        presentationID = requestID
+        presentationAnchor = placement
 
         // Important that we set the navigation state and current section before updating the cache.
         appState.navigationState.isIceBarPresented = true
         currentSection = section
 
-        await appState.itemManager.cacheItemsIfNeeded()
-
-        if ScreenCapture.cachedCheckPermissions() {
-            await appState.imageCache.updateCache()
+        await prepareItems()
+        guard presentationID == requestID else {
+            return
+        }
+        guard !Task.isCancelled else {
+            close()
+            return
         }
 
-        contentView = IceBarHostingView(appState: appState, screen: screen, section: section) { [weak self] in
+        contentView = IceBarHostingView(appState: appState, screen: placement.screen, section: section) { [weak self] in
             self?.close()
         }
 
-        updateOrigin(for: screen)
+        updateOrigin(for: placement.screen)
 
         orderFrontRegardless()
+        Logger.iceBar.info("Presented \(section.logString): display=\(placement.screen.displayID), frame=\(frame)")
     }
 
     override func close() {
+        presentationID = nil
+        presentationAnchor = nil
         super.close()
         contentView = nil
         currentSection = nil
         appState?.navigationState.isIceBarPresented = false
     }
+}
+
+private extension Logger {
+    static let iceBar = Logger(category: "IceBarPanel")
 }
 
 // MARK: - IceBarHostingView

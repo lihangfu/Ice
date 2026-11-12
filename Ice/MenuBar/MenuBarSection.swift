@@ -59,18 +59,6 @@ final class MenuBarSection {
         appState?.menuBarManager.iceBarPanel
     }
 
-    /// The best screen to show the Ice Bar on.
-    private weak var screenForIceBar: NSScreen? {
-        guard let appState else {
-            return nil
-        }
-        if appState.isActiveSpaceFullscreen {
-            return NSScreen.screenWithMouse ?? NSScreen.main
-        } else {
-            return NSScreen.main
-        }
-    }
-
     /// A Boolean value that indicates whether the section is hidden.
     var isHidden: Bool {
         if useIceBar {
@@ -128,7 +116,7 @@ final class MenuBarSection {
     }
 
     /// Shows the section.
-    func show() {
+    func show(placement: IceBarPanel.Placement? = nil) {
         guard
             let appState,
             isHidden
@@ -140,11 +128,12 @@ final class MenuBarSection {
             // TODO: Can we use isEnabled for this check?
             return
         }
+        let placement = useIceBar ? (placement ?? iceBarPanel?.capturePlacement()) : nil
         switch name {
         case .visible where useIceBar, .hidden where useIceBar:
             Task {
-                if let screenForIceBar {
-                    await iceBarPanel?.show(section: .hidden, on: screenForIceBar)
+                if let placement {
+                    await iceBarPanel?.show(section: .hidden, placement: placement)
                 }
                 for section in appState.menuBarManager.sections {
                     section.controlItem.state = .hideItems
@@ -152,8 +141,8 @@ final class MenuBarSection {
             }
         case .alwaysHidden where useIceBar:
             Task {
-                if let screenForIceBar {
-                    await iceBarPanel?.show(section: .alwaysHidden, on: screenForIceBar)
+                if let placement {
+                    await iceBarPanel?.show(section: .alwaysHidden, placement: placement)
                 }
                 for section in appState.menuBarManager.sections {
                     section.controlItem.state = .hideItems
@@ -230,9 +219,9 @@ final class MenuBarSection {
     }
 
     /// Toggles the visibility of the section.
-    func toggle() {
+    func toggle(placement: IceBarPanel.Placement? = nil) {
         if isHidden {
-            show()
+            show(placement: placement)
         } else {
             hide()
         }
