@@ -547,7 +547,7 @@ extension MenuBarItemManager {
         let blockingFlags: NSEvent.ModifierFlags = [.command, .control, .option, .shift]
         while true {
             try Task.checkCancellation()
-            if flags().intersection(blockingFlags).isEmpty {
+            if flags().isDisjoint(with: blockingFlags) {
                 return
             }
             guard ContinuousClock.now < deadline else {
